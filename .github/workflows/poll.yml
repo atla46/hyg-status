@@ -34,7 +34,6 @@ jobs:
         run: |
           if git ls-remote --exit-code --heads "https://x-access-token:${TOKEN}@github.com/${REPO}.git" data >/dev/null 2>&1; then
             git clone -q --depth 1 --branch data "https://x-access-token:${TOKEN}@github.com/${REPO}.git" data
-            rm -rf data/.git
           else
             mkdir data
           fi
@@ -54,18 +53,22 @@ jobs:
           TOKEN: ${{ github.token }}
         run: |
           cd data
-          git init -q -b data
+          if [ ! -d .git ]; then
+            git init -q -b data
+            git remote add origin "https://x-access-token:${TOKEN}@github.com/${REPO}.git"
+          fi
           git config user.name "hyg-bot"
           git config user.email "hyg-bot@users.noreply.github.com"
           git add -A
-          git commit -qm "update"
-          git push -qf "https://x-access-token:${TOKEN}@github.com/${REPO}.git" data
+          git commit -qm "update" || true
+          git push -q origin data
 
       - name: 公開用ファイルをまとめる
         run: |
           mkdir _site
           cp index.html _site/
           cp data/status.json _site/
+          if [ -d data/thumbs ]; then cp -r data/thumbs _site/thumbs; fi
 
       - uses: actions/upload-pages-artifact@v3
         with:

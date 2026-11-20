@@ -86,8 +86,8 @@ async function tick() {
   const hist = await readJson(HISTORY, { sessions: [] });
   const now = new Date().toISOString();
   const ok = {}, live = [];
-  if (TWITCH_CLIENT_ID && TWITCH_CLIENT_SECRET) { try { const r = await pollTwitch(channels); live.push(...r); ok.twitch = true; console.log("Twitch OK: 配信中 " + r.length + "人"); } catch (e) { console.error("!! Twitch エラー: " + e.message); } }
-  if (YOUTUBE_API_KEY) { try { const r = await pollYouTube(channels); live.push(...r); ok.youtube = true; console.log("YouTube OK: 配信中 " + r.length + "人"); } catch (e) { console.error("!! YouTube エラー: " + e.message); } }
+  if (TWITCH_CLIENT_ID && TWITCH_CLIENT_SECRET) { try { const r = await pollTwitch(channels); live.push(...r); ok.twitch = true; console.log("Twitch OK: 配信中 " + r.length + "人 [" + r.map(x => x.pid).join(", ") + "]"); } catch (e) { console.error("!! Twitch エラー: " + e.message); } }
+  if (YOUTUBE_API_KEY) { try { const r = await pollYouTube(channels); live.push(...r); ok.youtube = true; console.log("YouTube OK: 配信中 " + r.length + "人 [" + r.map(x => x.pid).join(", ") + "]"); } catch (e) { console.error("!! YouTube エラー: " + e.message); } }
 
   const seen = new Set();
   for (const l of live) {

@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ハイゲFINAL 配信ステータス</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: 放送ブースのモニター卓。暗い卓面に、チーム色の帯が時間軸を流れる。 */
+:root {
+  --bg: #0a0d14;
+  --panel: #10141e;
+  --panel-2: #161b28;
+  --line: #232b3d;
+  --grid: #1a2133;
+  --text: #e8ecf4;
+  --muted: #8a93a8;
+  --live: #ff4d2e;
+  --blue: #3b82f6; --red: #ef4444; --yellow: #eab308; --green: #22c55e; --none: #8b93a7;
+  --twitch: #9146ff; --youtube: #ff2a3d;
+  --font-body: "Noto Sans JP", system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+  --font-num: "Barlow Condensed", "Noto Sans JP", system-ui, sans-serif;
+  --name-w: 196px;
+  --row-h: 54px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 14px; line-height: 1.45; display: flex; flex-direction: column; overflow: hidden; }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid #8ab4ff; outline-offset: 2px; }
+
+/* header */
+.top { padding: 10px 16px 8px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
+.brand { display: flex; flex-direction: column; min-width: 0; }
+.brand h1 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: .02em; text-wrap: balance; }
+.brand small { color: var(--muted); font-size: 12px; }
+.clock { font-family: var(--font-num); font-size: 26px; font-weight: 600; letter-spacing: .04em; font-variant-numeric: tabular-nums; margin-left: auto; text-align: right; line-height: 1; }
+.clock small { display: block; font-family: var(--font-body); font-size: 11px; letter-spacing: 0; color: var(--muted); font-weight: 400; margin-top: 3px; }
+.notice { width: 100%; font-size: 12px; color: #f5d78a; background: #2a2412; border: 1px solid #4a3f17; border-radius: 6px; padding: 6px 10px; }
+.notice[hidden] { display: none; }
+
+/* toolbar */
+.bar-tools { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--line); background: var(--bg); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { background: var(--panel); border: 0; padding: 6px 12px; border-right: 1px solid var(--line); color: var(--muted); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: #25304a; color: var(--text); }
+.chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.chip[aria-pressed="true"] { color: var(--text); border-color: #4a5a85; background: #1d2740; }
+.chip i { width: 9px; height: 9px; border-radius: 50%; background: var(--c, var(--none)); display: inline-block; }
+.btn { background: #25304a; border: 1px solid #3a4870; border-radius: 8px; padding: 6px 14px; color: var(--text); }
+.btn:hover { background: #2e3b5c; }
+.btn.primary { background: var(--live); border-color: var(--live); color: #fff; font-weight: 700; }
+.btn.primary:hover { background: #ff6246; }
+.btn.ghost { background: transparent; border-color: var(--line); color: var(--muted); }
+.tools-r { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+select.zoom { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+
+/* timeline */
+.tl { flex: 1; min-height: 0; overflow: auto; position: relative; background: var(--bg); overscroll-behavior: contain; }
+.tl-inner { position: relative; min-width: 100%; }
+.hdr { position: sticky; top: 0; z-index: 7; display: flex; height: 34px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.corner { position: sticky; left: 0; z-index: 8; width: var(--name-w); flex: none; background: var(--panel); border-right: 1px solid var(--line); padding: 8px 12px; color: var(--muted); font-size: 12px; }
+.scale { position: relative; flex: none; height: 100%; }
+.tick { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--line); padding: 8px 0 0 5px; font-family: var(--font-num); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tick.day { border-left-color: #55658f; color: var(--text); }
+.tick.day b { font-weight: 600; margin-right: 6px; color: #aab8dd; }
+.nowtag { position: absolute; top: 0; transform: translateX(-50%); background: var(--live); color: #fff; font-family: var(--font-num); font-size: 12px; font-weight: 600; padding: 1px 6px; border-radius: 0 0 4px 4px; z-index: 2; }
+.nowline { position: absolute; top: 34px; bottom: 0; width: 2px; background: var(--live); opacity: .85; z-index: 4; pointer-events: none; box-shadow: 0 0 10px rgba(255,77,46,.6); }
+
+.teamrow { display: flex; height: 36px; background: color-mix(in srgb, var(--tc) 14%, var(--panel)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.teamrow .lab { position: sticky; left: 0; z-index: 6; display: flex; align-items: center; gap: 10px; padding: 0 12px; min-width: var(--name-w); background: color-mix(in srgb, var(--tc) 18%, var(--panel)); border-left: 4px solid var(--tc); width: max-content; }
+.teamrow strong { font-size: 14px; }
+.teamrow .cnt { font-family: var(--font-num); font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.teamrow .cnt b { color: var(--live); font-weight: 600; }
+.teamrow button { background: transparent; border: 1px solid color-mix(in srgb, var(--tc) 55%, var(--line)); border-radius: 6px; padding: 2px 8px; font-size: 12px; color: var(--text); }
+.teamrow button:hover { background: color-mix(in srgb, var(--tc) 25%, transparent); }
+
+.row { display: flex; height: var(--row-h); border-bottom: 1px solid var(--grid); }
+.row:hover .name { background: #151b2a; }
+.name { position: sticky; left: 0; z-index: 5; width: var(--name-w); flex: none; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; background: var(--bg); border-right: 1px solid var(--line); border-left: 4px solid var(--tc); }
+.name label { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; cursor: pointer; }
+.name input { width: 16px; height: 16px; accent-color: #6aa0ff; flex: none; }
+.av { width: 28px; height: 28px; flex: none; border-radius: 50%; background: color-mix(in srgb, var(--tc) 35%, #10141e); border: 2px solid var(--tc); display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+.nm { min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.nm span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.nm em { font-style: normal; font-size: 11px; color: var(--muted); }
+.nm em.on { color: var(--live); font-weight: 700; }
+.pipbtn { flex: none; background: transparent; border: 1px solid var(--line); border-radius: 5px; font-size: 11px; padding: 1px 5px; color: var(--muted); }
+.pipbtn:hover { color: var(--text); border-color: #4a5a85; }
+.track { position: relative; flex: none; height: 100%; background-image: repeating-linear-gradient(to right, transparent 0, transparent calc(var(--ppx) - 1px), var(--grid) calc(var(--ppx) - 1px), var(--grid) var(--ppx)); }
+.track.day-split { }
+.row.sel .name { background: #172238; }
+
+.bar { position: absolute; top: 6px; height: calc(var(--row-h) - 12px); display: flex; align-items: center; gap: 7px; padding: 0 8px 0 4px; overflow: hidden; text-decoration: none; color: var(--text); border-radius: 6px; background: color-mix(in srgb, var(--tc) 20%, #141a28); border: 1px solid color-mix(in srgb, var(--tc) 45%, #141a28); border-left: 4px solid var(--pc); min-width: 14px; }
+.bar:hover { background: color-mix(in srgb, var(--tc) 34%, #141a28); z-index: 3; }
+.bar.live { background: color-mix(in srgb, var(--tc) 30%, #141a28); border-color: var(--live); box-shadow: 0 0 0 1px rgba(255,77,46,.35), 0 0 14px rgba(255,77,46,.25); }
+.bar .th { height: 34px; width: 60px; border-radius: 3px; object-fit: cover; flex: none; background: #0c1018; }
+.bar .tx { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.bar .tx b { font-weight: 500; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar .tx i { font-style: normal; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.livetag { flex: none; font-family: var(--font-num); font-size: 12px; font-weight: 600; letter-spacing: .06em; background: var(--live); color: #fff; border-radius: 3px; padding: 0 5px; }
+.empty { position: absolute; inset: 0; }
+
+.group[hidden], .row[hidden] { display: none; }
+
+/* tooltip */
+.tip { position: fixed; z-index: 60; width: 300px; background: #0d111a; border: 1px solid #36425f; border-radius: 10px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.6); pointer-events: none; }
+.tip[hidden] { display: none; }
+.tip img { display: block; width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #0c1018; }
+.tip .tb { padding: 8px 10px 10px; }
+.tip .tb b { display: block; font-size: 13px; margin-bottom: 4px; }
+.tip .tb span { display: block; font-size: 12px; color: var(--muted); }
+
+/* dock */
+.dock { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 10px; background: #1b2540; border: 1px solid #44578a; border-radius: 12px; padding: 8px 10px 8px 16px; box-shadow: 0 10px 30px rgba(0,0,0,.5); max-width: calc(100% - 24px); }
+.dock[hidden] { display: none; }
+.dock span { white-space: nowrap; }
+.dock b { font-family: var(--font-num); font-size: 18px; margin-right: 2px; }
+
+/* multi view */
+.mv { position: fixed; inset: 0; z-index: 40; background: #06080d; display: flex; flex-direction: column; }
+.mv[hidden] { display: none; }
+.mv-top { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.mv-top h2 { margin: 0; font-size: 15px; }
+.mv-grid { flex: 1; min-height: 0; display: grid; gap: 6px; padding: 6px; }
+.mv-grid.main { grid-template-columns: 3fr 1fr; grid-auto-rows: 1fr; }
+.mv-grid.main .tile:first-child { grid-row: 1 / span 99; }
+.tile { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: #000; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; border-top: 3px solid var(--tc); }
+.tile.audio { border-color: #6aa0ff; border-top-color: var(--tc); }
+.tbar { display: flex; align-items: center; gap: 6px; padding: 3px 6px; background: var(--panel); font-size: 12px; }
+.tbar strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; font-weight: 500; }
+.tbar button, .tbar a { background: transparent; border: 1px solid var(--line); border-radius: 5px; padding: 1px 7px; color: var(--muted); font-size: 11px; text-decoration: none; white-space: nowrap; }
+.tbar button:hover, .tbar a:hover { color: var(--text); border-color: #4a5a85; }
+.tbar button[aria-pressed="true"] { color: #fff; background: #2d4a8a; border-color: #6aa0ff; }
+.tbody { flex: 1; min-height: 0; position: relative; background: #05070b; }
+.tbody iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.ph { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 12px; font-size: 13px; }
+@media (max-width: 760px) {
+  :root { --name-w: 138px; }
+  .mv-grid.main { grid-template-columns: 1fr; }
+  .mv-grid.main .tile:first-child { grid-row: auto; }
+  .mv-grid { overflow: auto; grid-auto-rows: minmax(210px, 1fr); }
+  .nm em { display: none; }
+  .pipbtn { display: none; }
+  .bar-tools { flex-wrap: nowrap; overflow-x: auto; padding: 6px 12px; }
+  .bar-tools > *, #teamChips > * { flex: none; white-space: nowrap; }
+  .tools-r { margin-left: 0; }
+  .brand small { display: none; }
+  .clock { font-size: 22px; }
+}
+
+/* modal */
+.modal { position: fixed; inset: 0; z-index: 80; background: rgba(3,5,9,.7); display: grid; place-items: center; padding: 16px; }
+.modal[hidden] { display: none; }
+.sheet { width: min(640px, 100%); max-height: 100%; display: flex; flex-direction: column; background: var(--panel); border: 1px solid #36425f; border-radius: 12px; overflow: hidden; }
+.sheet header { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+.sheet header h3 { margin: 0; font-size: 15px; flex: 1; }
+.sheet .body { overflow: auto; padding: 8px 16px; }
+.sheet footer { padding: 10px 16px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; }
+.sheet .note { font-size: 12px; color: var(--muted); margin: 6px 0 10px; }
+.ed { display: grid; grid-template-columns: 1fr 150px; gap: 6px 10px; align-items: center; }
+.ed select { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+@media (prefers-reduced-motion: no-preference) { .livetag { animation: pulse 1.6s ease-in-out infinite; } }
+@keyframes pulse { 50% { opacity: .65; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <h1>配信者ハイパーゲーム大会 FINAL 配信ステータス</h1>
+    <small>2026.11.28 土 / 11.29 日 東京ドーム。時刻は日本時間(JST)</small>
+  </div>
+  <div class="clock"><span id="clock">--:--:--</span><small id="updated">&nbsp;</small></div>
+  <div class="notice" id="notice" hidden></div>
+</header>
+
+<div class="bar-tools">
+  <div class="seg" id="range" role="group" aria-label="表示範囲">
+    <button data-r="now" aria-pressed="true">いま</button>
+    <button data-r="d1" aria-pressed="false">DAY1 11/28</button>
+    <button data-r="d2" aria-pressed="false">DAY2 11/29</button>
+    <button data-r="all" aria-pressed="false">全期間</button>
+  </div>
+  <select class="zoom" id="zoom" aria-label="横幅の拡大率">
+    <option value="60">縮小 60px/h</option>
+    <option value="110" selected>標準 110px/h</option>
+    <option value="180">拡大 180px/h</option>
+    <option value="260">最大 260px/h</option>
+  </select>
+  <button class="chip" id="liveOnly" aria-pressed="false">配信中のみ</button>
+  <span id="teamChips" style="display:contents"></span>
+  <div class="tools-r">
+    <button class="btn ghost" id="editTeams">チーム編集</button>
+    <button class="btn primary" id="openMulti">同時視聴 <span id="selN">0</span></button>
+  </div>
+</div>
+
+<main class="tl" id="tl" tabindex="0" aria-label="配信タイムライン"><div class="tl-inner" id="inner"></div></main>
+
+<div class="tip" id="tip" hidden></div>
+
+<div class="dock" id="dock" hidden>
+  <span><b id="dockN">0</b>人を選択中</span>
+  <button class="btn primary" id="dockOpen">同時視聴を開く</button>
+  <button class="btn ghost" id="dockClear">クリア</button>
+</div>
+
+<section class="mv" id="mv" hidden aria-label="同時視聴">
+  <div class="mv-top">
+    <button class="btn" id="mvBack">戻る</button>
+    <h2>同時視聴</h2>
+    <div class="seg" id="mvLayout" role="group" aria-label="レイアウト">
+      <button data-l="grid" aria-pressed="true">均等</button>
+      <button data-l="main" aria-pressed="false">1画面大 + 横</button>
+    </div>
+    <span style="color:var(--muted);font-size:12px">音声は「音声」を押した1画面のみ。他はミュートです。</span>
+    <div class="tools-r"><button class="btn ghost" id="mvClear">全員外す</button></div>
+  </div>
+  <div class="mv-grid" id="mvGrid"></div>
+</section>
+
+<div class="modal" id="edModal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="edTitle">
+    <header><h3 id="edTitle">チーム編集</h3><button class="btn ghost" id="edClose">閉じる</button></header>
+    <div class="body">
+      <p class="note">ドラフト結果と違う場合に直せます。変更はこのブラウザにだけ保存されます。全員に反映するには index.html の ROSTER を書き換えてください。</p>
+      <div class="ed" id="edList"></div>
+    </div>
+    <footer><button class="btn ghost" id="edReset">初期値に戻す</button><button class="btn primary" id="edSave">保存</button></footer>
+  </div>
+</div>
+
+<script>
+/* ============ 設定 ============ */
+const CONFIG = {
+  DATA_URL: "./status.json",   // ポーラーが書き出すJSON。取得できないときはデモ表示になります
+  REFRESH_SEC: 30,
+  EVENT: { d1: [2026, 11, 28], d2: [2026, 11, 29] }
+};
+
+/* ============ 参加者(ドラフト会議 2026-11-19 の公式発表から) ============
+   team: blue=TEAM k4sen / red=TEAM SHAKA / yellow=TEAM もこう / green=TEAM 関優太 / none=未使用
+   公式発表の「ハイパードラフト会議 FINAL」最終結果画像に基づく(各チーム リーダー+10人)。 */
+const TEAMS = {
+  blue:   { name: "TEAM k4sen",  color: "var(--blue)" },
+  red:    { name: "TEAM SHAKA",  color: "var(--red)" },
+  yellow: { name: "TEAM もこう", color: "var(--yellow)" },
+  green:  { name: "TEAM 関優太", color: "var(--green)" },
+  none:   { name: "チーム未確認", color: "var(--none)" }
+};
+const ROSTER = [
+  { id: "k4sen", name: "k4sen", team: "blue", leader: true },
+  { id: "ayutaro", name: "あゆたろう", team: "blue" },
+  { id: "hiiragi", name: "柊ツルギ", team: "blue" },
+  { id: "yufuna", name: "ゆふな", team: "blue" },
+  { id: "foy", name: "Foy", team: "blue" },
+  { id: "yuyuta", name: "ゆゆうた", team: "blue" },
+
+  { id: "shaka", name: "SHAKA", team: "red", leader: true },
+  { id: "karubi", name: "赤見かるび", team: "red" },
+  { id: "vodka", name: "ボドカ", team: "red" },
+  { id: "noriaki", name: "鈴木ノリアキ", team: "red" },
+  { id: "gocchan", name: "ごっちゃん@マイキー", team: "red" },
+  { id: "yy", name: "わいわい", team: "red" },
+
+  { id: "mokou", name: "もこう", team: "yellow", leader: true },
+  { id: "batora", name: "バトラ", team: "yellow" },
+  { id: "enako", name: "えなこ", team: "yellow" },
+  { id: "biju", name: "Biju", team: "yellow" },
+  { id: "stanmi", name: "スタンミじゃぱん", team: "yellow" },
+  { id: "kenki", name: "けんき", team: "yellow" },
+
+  { id: "seki", name: "関優太", team: "green", leader: true },
+  { id: "zerost", name: "Zerost", team: "green" },
+  { id: "myako", name: "みゃこ", team: "green" },
+  { id: "hal", name: "渋谷ハル", team: "green" },
+  { id: "kokukei", name: "こく兄", team: "green" },
+  { id: "euriece", name: "Euriece", team: "green" },
+
+  { id: "amatsuki", name: "天月", team: "blue" },
+  { id: "assari", name: "あっさりしょこ", team: "green" },
+  { id: "iori", name: "伊織もえ", team: "red" },
+  { id: "oniya", name: "おにや", team: "green" },
+  { id: "kyoichiro", name: "恭一郎", team: "red" },
+  { id: "shinji", name: "しんじさん", team: "yellow" },
+  { id: "spygea", name: "SPYGEA", team: "red" },
+  { id: "sumomo", name: "すもも", team: "green" },
+  { id: "taiji", name: "たいじ", team: "green" },
+  { id: "sakamoto", name: "幕末志士・坂本", team: "yellow" },
+  { id: "futon", name: "布団ちゃん", team: "blue" },
+  { id: "francisco", name: "ふらんしすこ", team: "blue" },
+  { id: "misaco", name: "misaco", team: "green" },
+  { id: "yunocy", name: "yunocy", team: "yellow" },
+  { id: "yoshinama", name: "よしなま", team: "blue" },
+  { id: "raijin", name: "らいじん", team: "yellow" },
+  { id: "laz", name: "Laz", team: "yellow" },
+  { id: "rassha", name: "らっしゃー", team: "red" },
+  { id: "ramu", name: "RaMu", team: "blue" },
+  { id: "rion", name: "rion", team: "red" }
+];
+const TEAM_ORDER = ["blue", "red", "yellow", "green"];
+
+/* ============ 状態 ============ */
+const JST = 9 * 3600e3, H = 3600e3;
+const S = { sessions: [], mode: "demo", range: "now", ppx: 110, liveOnly: false, teamFilter: new Set(TEAM_ORDER),
+  collapsed: new Set(), sel: new Set(), teamOverride: {}, t0: 0, t1: 0, mvAudio: null, mvLayout: "grid", pipActive: new Set() };
+try { S.teamOverride = JSON.parse(localStorage.getItem("hyg.teams") || "{}"); } catch (e) {}
+
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = n => String(n).padStart(2, "0");
+const jd = ms => new Date(ms + JST);
+const hm = ms => { const d = jd(ms); return pad(d.getUTCHours()) + ":" + pad(d.getUTCMinutes()); };
+const youbi = "日月火水木金土";
+const mdw = ms => { const d = jd(ms); return (d.getUTCMonth() + 1) + "/" + d.getUTCDate() + "(" + youbi[d.getUTCDay()] + ")"; };
+const jstMs = (y, m, d, h = 0) => Date.UTC(y, m - 1, d, h) - JST;
+const teamOf = p => S.teamOverride[p.id] || p.team;
+const fmtV = n => n >= 10000 ? (n / 10000).toFixed(1).replace(/\.0$/, "") + "万人" : n.toLocaleString("ja-JP") + "人";
+const dur = ms => { const m = Math.round(ms / 60000); return m >= 60 ? Math.floor(m / 60) + "時間" + (m % 60 ? m % 60 + "分" : "") : m + "分"; };
+
+/* ============ デモデータ ============ */
+function demoSessions(now) {
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const titles = ["【ハイゲFINAL】めっちゃカメレオン 練習", "PUBG 最終調整 スクリム", "ARC Raiders 大会マッチ対策", "パワプロ2026 特訓", "雑談しながら前日準備", "チーム連携の確認 ボイチャ配信", "FPS ランク 明日に備えて"];
+  const games = ["めっちゃカメレオン", "PUBG", "ARC Raiders", "パワフルプロ野球", "雑談", "VALORANT"];
+  const out = [];
+  ROSTER.forEach((p, idx) => {
+    const n = 1 + Math.floor(rnd() * 3);
+    let cursor = now - (2 + rnd() * 20) * H;
+    for (let i = 0; i < n; i++) {
+      const start = cursor + rnd() * 2 * H;
+      const len = (0.8 + rnd() * 3.5) * H;
+      let end = start + len;
+      if (end > now - 0.2 * H) break;
+      out.push(mk(p, idx, start, end, false));
+      cursor = end + (0.5 + rnd() * 3) * H;
+    }
+    if (rnd() < 0.4) {
+      const start = Math.max(cursor, now - (0.2 + rnd() * 3.5) * H);
+      if (start < now - 5 * 60000) out.push(mk(p, idx, start, null, true));
+    }
+  });
+  function mk(p, idx, start, end, live) {
+    const g = games[Math.floor(rnd() * games.length)];
+    return { pid: p.id, start, end, title: titles[Math.floor(rnd() * titles.length)], game: g,
+      platform: idx % 3 === 0 ? "youtube" : "twitch", viewers: live ? Math.floor(300 + rnd() * 40000) : 0,
+      url: "https://www.twitch.tv/", thumb: demoThumb(g, p.id), demo: true };
+  }
+  return out;
+}
+function demoThumb(game, seedStr) {
+  let h = 0; for (const c of seedStr + game) h = (h * 31 + c.charCodeAt(0)) % 360;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${h},55%,34%)"/><stop offset="1" stop-color="hsl(${(h + 60) % 360},60%,16%)"/></linearGradient></defs><rect width="320" height="180" fill="url(#g)"/><text x="160" y="96" font-size="24" font-family="sans-serif" font-weight="700" fill="#fff" fill-opacity=".85" text-anchor="middle">${esc(game)}</text><text x="160" y="124" font-size="12" font-family="sans-serif" fill="#fff" fill-opacity=".5" text-anchor="middle">DEMO</text></svg>`;
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+
+/* ============ データ読み込み ============ */
+let demoCache = null;
+async function load() {
+  const now = Date.now();
+  let ok = false;
+  if (CONFIG.DATA_URL) {
+    try {
+      const r = await fetch(CONFIG.DATA_URL + (CONFIG.DATA_URL.includes("?") ? "&" : "?") + "t=" + now, { cache: "no-store" });
+      if (!r.ok) throw new Error(r.status);
+      const j = await r.json();
+      S.sessions = (j.sessions || []).map(s => ({ ...s, start: Date.parse(s.start), end: s.end ? Date.parse(s.end) : null }));
+      S.mode = "live"; S.updated = j.generatedAt ? Date.parse(j.generatedAt) : now; ok = true;
+    } catch (e) { /* デモにフォールバック */ }
+  }
+  if (!ok) {
+    if (!demoCache) demoCache = demoSessions(now);
+    S.sessions = demoCache; S.mode = "demo"; S.updated = now;
+  }
+  const n = $("#notice");
+  if (S.mode === "demo") { n.hidden = false; n.textContent = "デモデータを表示中です。配信タイトル・サムネイル・リンクは見本です。実データは status.json(同梱のポーラーが生成)を同じ場所に置くと自動で切り替わります。"; }
+  else n.hidden = true;
+  $("#updated").textContent = (S.mode === "demo" ? "デモ表示" : "最終更新 " + hm(S.updated));
+}
+
+/* ============ 描画 ============ */
+function computeRange() {
+  const now = Date.now(), E = CONFIG.EVENT;
+  if (S.range === "d1") { S.t0 = jstMs(...E.d1, 0); S.t1 = S.t0 + 24 * H; }
+  else if (S.range === "d2") { S.t0 = jstMs(...E.d2, 0); S.t1 = S.t0 + 24 * H; }
+  else if (S.range === "all") { S.t0 = jstMs(2026, 11, 27, 12); S.t1 = jstMs(2026, 11, 30, 0); }
+  else { S.t0 = Math.floor((now - 14 * H) / H) * H; S.t1 = Math.ceil((now + 3 * H) / H) * H; }
+}
+const sessionsOf = pid => S.sessions.filter(s => s.pid === pid).sort((a, b) => a.start - b.start);
+const liveOf = pid => S.sessions.find(s => s.pid === pid && !s.end);
+
+function render() {
+  computeRange();
+  const now = Date.now(), ppx = S.ppx, nameW = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--name-w"));
+  const w = (S.t1 - S.t0) / H * ppx;
+  const inner = $("#inner");
+  inner.style.width = (nameW + w) + "px";
+  document.documentElement.style.setProperty("--ppx", ppx + "px");
+  const step = ppx >= 100 ? 1 : ppx >= 55 ? 2 : 3;
+  let ticks = "";
+  for (let t = S.t0, i = 0; t <= S.t1; t += H, i++) {
+    const hh = jd(t).getUTCHours(), x = i * ppx;
+    if (hh === 0 || i === 0) ticks += `<div class="tick day" style="left:${x}px"><b>${mdw(t)}</b>${pad(hh)}:00</div>`;
+    else if (hh % step === 0) ticks += `<div class="tick" style="left:${x}px">${pad(hh)}:00</div>`;
+  }
+  const nowIn = now >= S.t0 && now <= S.t1, nx = (now - S.t0) / H * ppx;
+  let html = `<div class="hdr"><div class="corner">参加者 / 時刻(JST)</div><div class="scale" style="width:${w}px">${ticks}${nowIn ? `<div class="nowtag" style="left:${nx}px">NOW ${hm(now)}</div>` : ""}</div></div>`;
+  if (nowIn) html += `<div class="nowline" style="left:${nameW + nx}px"></div>`;
+
+  const byTeam = {}; TEAM_ORDER.forEach(k => byTeam[k] = []);
+  ROSTER.forEach(p => byTeam[teamOf(p)].push(p));
+  TEAM_ORDER.forEach(tk => {
+    if (!S.teamFilter.has(tk)) return;
+    let list = byTeam[tk];
+    if (!list.length) return;
+    const liveN = list.filter(p => liveOf(p.id)).length;
+    const T = TEAMS[tk], col = collapsedKey(tk);
+    html += `<div class="group"><div class="teamrow" style="--tc:${T.color}"><div class="lab"><strong>${esc(T.name)}</strong><span class="cnt"><b>${liveN}</b> / ${list.length} 配信中</span><button data-act="fold" data-team="${tk}">${col ? "開く" : "たたむ"}</button><button data-act="selLive" data-team="${tk}">配信中を選択</button></div></div>`;
+    if (!col) {
+      if (S.liveOnly) list = list.filter(p => liveOf(p.id));
+      list.forEach(p => { html += rowHtml(p, T, now, w); });
+    }
+    html += `</div>`;
+  });
+  const keepL = $("#tl").scrollLeft, keepT = $("#tl").scrollTop;
+  inner.innerHTML = html;
+  $("#tl").scrollLeft = keepL; $("#tl").scrollTop = keepT;
+  updateSel();
+}
+const collapsedKey = k => S.collapsed.has(k);
+
+function rowHtml(p, T, now, w) {
+  const live = liveOf(p.id), ppx = S.ppx;
+  let bars = "";
+  sessionsOf(p.id).forEach(s => {
+    const a = Math.max(s.start, S.t0), b = Math.min(s.end || now, S.t1);
+    if (b <= a) return;
+    const left = (a - S.t0) / H * ppx, width = Math.max((b - a) / H * ppx, 14);
+    const isLive = !s.end;
+    const idx = S.sessions.indexOf(s);
+    const showTh = width >= 96, showTx = width >= 150;
+    bars += `<a class="bar${isLive ? " live" : ""}" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" data-i="${idx}" style="left:${left}px;width:${width}px;--pc:var(--${s.platform === "youtube" ? "youtube" : "twitch"})" aria-label="${esc(p.name)}: ${esc(s.title)}">`
+      + (showTh ? `<img class="th" src="${esc(s.thumb || "")}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : "")
+      + (showTx ? `<span class="tx"><b>${esc(s.title)}</b><i>${esc([s.game, isLive && s.viewers ? fmtV(s.viewers) : ""].filter(Boolean).join(" ・ "))}</i></span>` : "")
+      + (isLive && width >= 90 ? `<span class="livetag">LIVE</span>` : "")
+      + `</a>`;
+  });
+  const sel = S.sel.has(p.id);
+  return `<div class="row${sel ? " sel" : ""}" style="--tc:${T.color}" data-pid="${p.id}"><div class="name"><label><input type="checkbox" data-pid="${p.id}" ${sel ? "checked" : ""} aria-label="${esc(p.name)}を同時視聴に追加"><span class="av">${esc(p.name.trim().charAt(0))}</span><span class="nm"><span>${esc(p.name)}</span><em class="${live ? "on" : ""}">${live ? "LIVE" : p.leader ? "リーダー" : "&nbsp;"}</em></span></label>${live ? `<button class="pipbtn" data-act="pip" data-pid="${p.id}" title="ピクチャーインピクチャーで見る">PiP</button>` : ""}</div><div class="track" style="width:${w}px">${bars}</div></div>`;
+}
+
+/* ============ 選択 ============ */
+function updateSel() {
+  const n = S.sel.size;
+  $("#selN").textContent = n; $("#dockN").textContent = n;
+  $("#dock").hidden = n === 0 || !$("#mv").hidden;
+}
+function setSel(pid, on) {
+  on ? S.sel.add(pid) : S.sel.delete(pid);
+  const row = $(`.row[data-pid="${pid}"]`); if (row) row.classList.toggle("sel", on);
+  updateSel();
+}
+
+/* ============ ツールチップ ============ */
+const tip = $("#tip");
+$("#tl").addEventListener("mouseover", e => {
+  const bar = e.target.closest(".bar"); if (!bar) return;
+  const s = S.sessions[+bar.dataset.i], p = ROSTER.find(x => x.id === s.pid);
+  const end = s.end || Date.now();
+  tip.innerHTML = `<img src="${esc(s.thumb || "")}" alt="" onerror="this.style.visibility='hidden'"><div class="tb"><b>${esc(s.title)}</b><span>${esc(p.name)} ・ ${s.platform === "youtube" ? "YouTube" : "Twitch"}${s.game ? " ・ " + esc(s.game) : ""}</span><span>${mdw(s.start)} ${hm(s.start)} – ${s.end ? hm(s.end) : "配信中"}(${dur(end - s.start)})${!s.end && s.viewers ? " ・ " + fmtV(s.viewers) : ""}</span></div>`;
+  const r = bar.getBoundingClientRect();
+  let x = Math.min(r.left, innerWidth - 312), y = r.bottom + 8;
+  if (y + 260 > innerHeight) y = Math.max(8, r.top - 268);
+  tip.style.left = Math.max(8, x) + "px"; tip.style.top = y + "px"; tip.hidden = false;
+});
+$("#tl").addEventListener("mouseout", e => { if (e.target.closest(".bar")) tip.hidden = true; });
+$("#tl").addEventListener("scroll", () => { tip.hidden = true; }, { passive: true });
+
+/* ============ タイムラインのクリック ============ */
+$("#tl").addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const act = b.dataset.act;
+  if (act === "fold") { const k = b.dataset.team; S.collapsed.has(k) ? S.collapsed.delete(k) : S.collapsed.add(k); render(); }
+  else if (act === "selLive") { ROSTER.filter(p => teamOf(p) === b.dataset.team && liveOf(p.id)).forEach(p => S.sel.add(p.id)); render(); }
+  else if (act === "pip") { e.preventDefault(); openPip(b.dataset.pid); }
+});
+$("#tl").addEventListener("change", e => { const c = e.target.closest('input[type="checkbox"][data-pid]'); if (c) setSel(c.dataset.pid, c.checked); });
+
+/* ============ ツールバー ============ */
+$("#range").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  S.range = b.dataset.r;
+  document.querySelectorAll("#range button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  render(); scrollToDefault();
+});
+$("#zoom").addEventListener("change", e => { S.ppx = +e.target.value; render(); scrollToDefault(); });
+$("#liveOnly").addEventListener("click", e => { S.liveOnly = !S.liveOnly; e.currentTarget.setAttribute("aria-pressed", S.liveOnly); render(); });
+(function chips() {
+  $("#teamChips").innerHTML = TEAM_ORDER.map(k => `<button class="chip" data-t="${k}" aria-pressed="true" style="--c:${TEAMS[k].color}"><i></i>${esc(TEAMS[k].name)}</button>`).join("");
+  $("#teamChips").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const k = b.dataset.t; S.teamFilter.has(k) ? S.teamFilter.delete(k) : S.teamFilter.add(k);
+    b.setAttribute("aria-pressed", S.teamFilter.has(k)); render();
+  });
+})();
+function scrollToDefault() {
+  const tl = $("#tl"), now = Date.now(), nameW = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--name-w"));
+  if (S.range === "now") tl.scrollLeft = Math.max(0, nameW + (now - S.t0) / H * S.ppx - tl.clientWidth * 0.7);
+  else if (S.range === "d1" || S.range === "d2") tl.scrollLeft = (10 / 24) * (S.t1 - S.t0) / H * S.ppx; // 10時台から
+  else tl.scrollLeft = 0;
+}
+
+/* ============ 埋め込み・PiP ============ */
+function embedSrc(s, muted) {
+  if (!s || s.demo) return null;
+  const host = location.hostname || "localhost";
+  if (s.platform === "youtube") {
+    if (s.videoId) return `https://www.youtube.com/embed/${encodeURIComponent(s.videoId)}?autoplay=1&mute=${muted ? 1 : 0}&playsinline=1`;
+    if (s.channelId) return `https://www.youtube.com/embed/live_stream?channel=${encodeURIComponent(s.channelId)}&autoplay=1&mute=${muted ? 1 : 0}`;
+    return null;
+  }
+  if (s.channel) return `https://player.twitch.tv/?channel=${encodeURIComponent(s.channel)}&parent=${encodeURIComponent(host)}&muted=${muted ? "true" : "false"}&autoplay=true`;
+  return null;
+}
+async function openPip(pid) {
+  const s = liveOf(pid), p = ROSTER.find(x => x.id === pid), src = embedSrc(s, false);
+  if (!src) { toast(S.mode === "demo" ? "デモデータのため映像は開けません。" : "この配信は埋め込みに対応していません。配信ページを開いてください。"); return; }
+  try {
+    if ("documentPictureInPicture" in window) {
+      const pw = await documentPictureInPicture.requestWindow({ width: 480, height: 290 });
+      pw.document.title = p.name + " - PiP";
+      pw.document.body.style.cssText = "margin:0;background:#000;height:100vh";
+      const f = pw.document.createElement("iframe");
+      f.src = src; f.allow = "autoplay; fullscreen; picture-in-picture"; f.allowFullscreen = true;
+      f.style.cssText = "border:0;width:100%;height:100%";
+      pw.document.body.appendChild(f);
+      return pw;
+    }
+  } catch (e) { /* フォールバックへ */ }
+  const w = window.open(src, "hyg-pip-" + pid, "popup=yes,width=480,height=290");
+  if (!w) toast("ポップアップがブロックされました。許可してもう一度押してください。");
+}
+let toastT;
+function toast(msg) {
+  let t = $("#toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; t.style.cssText = "position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:90;background:#222b42;border:1px solid #44578a;border-radius:8px;padding:8px 14px;font-size:13px;max-width:90%"; document.body.appendChild(t); }
+  t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3500);
+}
+
+/* ============ 同時視聴 ============ */
+function openMulti() {
+  if (!S.sel.size) { toast("左のチェックボックスで見たい人を選んでください。"); return; }
+  if (!S.mvAudio || !S.sel.has(S.mvAudio)) S.mvAudio = [...S.sel][0];
+  $("#mv").hidden = false; $("#dock").hidden = true; syncTiles();
+}
+function closeMulti() { $("#mv").hidden = true; updateSel(); render(); }
+function syncTiles() {
+  const g = $("#mvGrid"), ids = [...S.sel];
+  [...g.children].forEach(t => { if (!S.sel.has(t.dataset.pid)) t.remove(); });
+  const n = ids.length, cols = S.mvLayout === "main" ? 0 : Math.ceil(Math.sqrt(n));
+  g.className = "mv-grid" + (S.mvLayout === "main" ? " main" : "");
+  if (cols) { g.style.gridTemplateColumns = `repeat(${cols}, minmax(0,1fr))`; g.style.gridTemplateRows = `repeat(${Math.ceil(n / cols)}, minmax(0,1fr))`; }
+  else { g.style.gridTemplateColumns = ""; g.style.gridTemplateRows = ""; }
+  ids.forEach((pid, i) => {
+    const p = ROSTER.find(x => x.id === pid), T = TEAMS[teamOf(p)], s = liveOf(pid), audio = pid === S.mvAudio;
+    let tile = g.querySelector(`.tile[data-pid="${pid}"]`);
+    if (!tile) {
+      tile = document.createElement("div"); tile.className = "tile"; tile.dataset.pid = pid;
+      tile.innerHTML = `<div class="tbar"><strong></strong><button data-a="audio">音声</button><button data-a="pip">PiP</button><a target="_blank" rel="noopener noreferrer" data-a="open">配信ページ</a><button data-a="rm">外す</button></div><div class="tbody"></div>`;
+      g.appendChild(tile);
+    }
+    tile.style.setProperty("--tc", T.color);
+    tile.classList.toggle("audio", audio);
+    tile.querySelector("strong").textContent = p.name + (s ? " ・ " + s.title : "");
+    tile.querySelector('[data-a="audio"]').setAttribute("aria-pressed", audio);
+    const a = tile.querySelector('[data-a="open"]'); if (s) { a.href = s.url; a.hidden = false; } else a.hidden = true;
+    const src = embedSrc(s, !audio), key = s ? (src || "noembed:" + s.demo) : "offline";
+    const body = tile.querySelector(".tbody");
+    if (tile.dataset.key !== key) {
+      tile.dataset.key = key; body.innerHTML = "";
+      if (src) { const f = document.createElement("iframe"); f.src = src; f.allow = "autoplay; fullscreen; picture-in-picture"; f.allowFullscreen = true; f.title = p.name + "の配信"; body.appendChild(f); }
+      else body.innerHTML = `<div class="ph">${s ? (s.demo ? "デモデータのため映像は表示されません。" : "この配信は埋め込みできません。「配信ページ」から開いてください。") : esc(p.name) + "は配信していません。配信が始まると自動で映ります。"}</div>`;
+    }
+    g.appendChild(tile); // 並び順を選択順に保つ
+  });
+}
+$("#mvGrid").addEventListener("click", e => {
+  const b = e.target.closest("[data-a]"); if (!b) return;
+  const pid = b.closest(".tile").dataset.pid;
+  if (b.dataset.a === "audio") { S.mvAudio = pid; syncTiles(); }
+  else if (b.dataset.a === "pip") openPip(pid);
+  else if (b.dataset.a === "rm") { S.sel.delete(pid); if (S.mvAudio === pid) S.mvAudio = [...S.sel][0] || null; if (!S.sel.size) closeMulti(); else syncTiles(); }
+});
+$("#mvLayout").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; S.mvLayout = b.dataset.l; document.querySelectorAll("#mvLayout button").forEach(x => x.setAttribute("aria-pressed", x === b)); syncTiles(); });
+$("#mvBack").addEventListener("click", closeMulti);
+$("#mvClear").addEventListener("click", () => { S.sel.clear(); closeMulti(); });
+$("#openMulti").addEventListener("click", openMulti);
+$("#dockOpen").addEventListener("click", openMulti);
+$("#dockClear").addEventListener("click", () => { S.sel.clear(); render(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { if (!$("#edModal").hidden) $("#edModal").hidden = true; else if (!$("#mv").hidden) closeMulti(); } });
+
+/* ============ チーム編集 ============ */
+$("#editTeams").addEventListener("click", () => {
+  $("#edList").innerHTML = ROSTER.map(p => `<label for="ed-${p.id}">${esc(p.name)}</label><select id="ed-${p.id}" data-pid="${p.id}">${TEAM_ORDER.map(k => `<option value="${k}" ${teamOf(p) === k ? "selected" : ""}>${esc(TEAMS[k].name)}</option>`).join("")}</select>`).join("");
+  $("#edModal").hidden = false;
+});
+$("#edClose").addEventListener("click", () => $("#edModal").hidden = true);
+$("#edSave").addEventListener("click", () => {
+  const o = {};
+  document.querySelectorAll("#edList select").forEach(s => { const p = ROSTER.find(x => x.id === s.dataset.pid); if (s.value !== p.team) o[p.id] = s.value; });
+  S.teamOverride = o; try { localStorage.setItem("hyg.teams", JSON.stringify(o)); } catch (e) {}
+  $("#edModal").hidden = true; render();
+});
+$("#edReset").addEventListener("click", () => { S.teamOverride = {}; try { localStorage.removeItem("hyg.teams"); } catch (e) {} $("#edModal").hidden = true; render(); });
+
+/* ============ 起動 ============ */
+function tickClock() { $("#clock").textContent = hm(Date.now()) + ":" + pad(jd(Date.now()).getUTCSeconds()); }
+async function refresh() {
+  await load(); render();
+  if (!$("#mv").hidden) syncTiles();
+}
+(async function init() {
+  tickClock(); setInterval(tickClock, 1000);
+  await load(); render(); scrollToDefault();
+  setInterval(refresh, CONFIG.REFRESH_SEC * 1000);
+})();
+</script>
+</body>
+</html>

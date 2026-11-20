@@ -1,0 +1,75 @@
+name: poll-and-publish
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # 5分ごと(GitHubの都合で数分遅れることがあります)
+  workflow_dispatch:         # Actionsタブから手動でも実行できます
+
+permissions:
+  contents: write   # 履歴(dataブランチ)の保存に使う
+  pages: write
+  id-token: write
+
+concurrency:
+  group: hyg-poll
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 前回までの履歴を取得
+        env:
+          REPO: ${{ github.repository }}
+          TOKEN: ${{ github.token }}
+        run: |
+          if git ls-remote --exit-code --heads "https://x-access-token:${TOKEN}@github.com/${REPO}.git" data >/dev/null 2>&1; then
+            git clone -q --depth 1 --branch data "https://x-access-token:${TOKEN}@github.com/${REPO}.git" data
+            rm -rf data/.git
+          else
+            mkdir data
+          fi
+
+      - name: 配信状況を取得
+        env:
+          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          OUT: data/status.json
+          HISTORY: data/history.json
+        run: node poller.mjs
+
+      - name: 履歴をdataブランチに保存
+        env:
+          REPO: ${{ github.repository }}
+          TOKEN: ${{ github.token }}
+        run: |
+          cd data
+          git init -q -b data
+          git config user.name "hyg-bot"
+          git config user.email "hyg-bot@users.noreply.github.com"
+          git add -A
+          git commit -qm "update"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${REPO}.git" data
+
+      - name: 公開用ファイルをまとめる
+        run: |
+          mkdir _site
+          cp index.html _site/
+          cp data/status.json _site/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -22,7 +22,7 @@
   --twitch: #9146ff; --youtube: #ff2a3d;
   --font-body: "Noto Sans JP", system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
   --font-num: "Barlow Condensed", "Noto Sans JP", system-ui, sans-serif;
-  --name-w: 196px;
+  --name-w: 250px;
   --row-h: 54px;
   color-scheme: dark;
 }
@@ -96,6 +96,8 @@ select.zoom { background: var(--panel); border: 1px solid var(--line); border-ra
 .nm span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .nm em { font-style: normal; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 108px; display: block; }
 .nm em.on { color: var(--live); font-weight: 700; }
+.cum { flex: none; font-family: var(--font-num); font-size: 14px; color: #b9c3dc; font-variant-numeric: tabular-nums; min-width: 54px; text-align: right; }
+.cum.zero { color: var(--muted); }
 .pipbtn { flex: none; background: transparent; border: 1px solid var(--line); border-radius: 5px; font-size: 11px; padding: 1px 5px; color: var(--muted); }
 .pipbtn:hover { color: var(--text); border-color: #4a5a85; }
 .track { position: relative; flex: none; height: 100%; background-image: repeating-linear-gradient(to right, transparent 0, transparent calc(var(--ppx) - 1px), var(--grid) calc(var(--ppx) - 1px), var(--grid) var(--ppx)); }
@@ -146,7 +148,19 @@ select.zoom { background: var(--panel); border: 1px solid var(--line); border-ra
 .tbody { flex: 1; min-height: 0; position: relative; background: #05070b; }
 .tbody iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .ph { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 12px; font-size: 13px; }
+.rk { display: grid; grid-template-columns: 28px 12px minmax(0,1fr) 78px; gap: 4px 10px; align-items: center; font-size: 13px; }
+.rk .no { font-family: var(--font-num); color: var(--muted); text-align: right; }
+.rk .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--tc); }
+.rk .bar2 { position: relative; height: 22px; display: flex; align-items: center; }
+.rk .bar2 i { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--tc) 30%, transparent); border-radius: 4px; }
+.rk .bar2 span { position: relative; padding-left: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rk .t { font-family: var(--font-num); font-size: 15px; text-align: right; font-variant-numeric: tabular-nums; }
+.rkteams { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 4px 0 14px; }
+.rkteams div { border: 1px solid var(--line); border-left: 4px solid var(--tc); border-radius: 6px; padding: 6px 10px; background: var(--panel-2); }
+.rkteams b { display: block; font-size: 12px; font-weight: 500; color: var(--muted); }
+.rkteams span { font-family: var(--font-num); font-size: 20px; }
 @media (max-width: 760px) {
+  .cum { display: none; }
   :root { --name-w: 138px; }
   .mv-grid.main { grid-template-columns: 1fr; }
   .mv-grid.main .tile:first-child { grid-row: auto; }
@@ -193,6 +207,7 @@ select.zoom { background: var(--panel); border: 1px solid var(--line); border-ra
     <button data-r="d2" aria-pressed="false">DAY2 11/29</button>
     <button data-r="all" aria-pressed="false">全期間</button>
   </div>
+  <select class="zoom" id="dayPick" aria-label="日付を選ぶ"></select>
   <select class="zoom" id="zoom" aria-label="横幅の拡大率">
     <option value="60">縮小 60px/h</option>
     <option value="110" selected>標準 110px/h</option>
@@ -206,6 +221,7 @@ select.zoom { background: var(--panel); border: 1px solid var(--line); border-ra
   <button class="chip" id="liveOnly" aria-pressed="false">配信中のみ</button>
   <span id="teamChips" style="display:contents"></span>
   <div class="tools-r">
+    <button class="btn ghost" id="openRank">累計配信時間</button>
     <button class="btn ghost" id="editTeams">チーム編集</button>
     <button class="btn primary" id="openMulti">同時視聴 <span id="selN">0</span></button>
   </div>
@@ -234,6 +250,17 @@ select.zoom { background: var(--panel); border: 1px solid var(--line); border-ra
   </div>
   <div class="mv-grid" id="mvGrid"></div>
 </section>
+
+<div class="modal" id="rkModal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rkTitle">
+    <header><h3 id="rkTitle">累計配信時間</h3><button class="btn ghost" id="rkClose">閉じる</button></header>
+    <div class="body">
+      <p class="note">集計期間は 11/20(金) 0:00 〜 11/27(金) 24:00(本番前日まで)です。TwitchとYouTubeで同時に配信した時間は、重ねずに数えます。</p>
+      <div class="rkteams" id="rkTeams"></div>
+      <div class="rk" id="rkList"></div>
+    </div>
+  </div>
+</div>
 
 <div class="modal" id="edModal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="edTitle">
@@ -409,7 +436,8 @@ function computeRange() {
   const now = Date.now(), E = CONFIG.EVENT;
   if (S.range === "d1") { S.t0 = jstMs(...E.d1, 0); S.t1 = S.t0 + 24 * H; }
   else if (S.range === "d2") { S.t0 = jstMs(...E.d2, 0); S.t1 = S.t0 + 24 * H; }
-  else if (S.range === "all") { S.t0 = jstMs(2026, 11, 27, 12); S.t1 = jstMs(2026, 11, 30, 0); }
+  else if (S.range === "all") { S.t0 = jstMs(2026, 11, 20, 0); S.t1 = jstMs(2026, 11, 30, 0); }
+  else if (S.range.startsWith("day:")) { S.t0 = jstMs(2026, 11, +S.range.slice(4), 0); S.t1 = S.t0 + 24 * H; }
   else { S.t0 = Math.floor((now - 14 * H) / H) * H; S.t1 = Math.ceil((now + 3 * H) / H) * H; }
 }
 const sessionsOf = pid => S.sessions.filter(s => s.pid === pid).sort((a, b) => a.start - b.start);
@@ -417,12 +445,12 @@ const liveOf = pid => S.sessions.find(s => s.pid === pid && !s.end);
 
 function render() {
   computeRange();
-  const now = Date.now(), ppx = S.ppx, nameW = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--name-w"));
+  const now = Date.now(), ppx = (S.eff = S.range === "all" ? 20 : S.ppx), nameW = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--name-w"));
   const w = (S.t1 - S.t0) / H * ppx;
   const inner = $("#inner");
   inner.style.width = (nameW + w) + "px";
   document.documentElement.style.setProperty("--ppx", ppx + "px");
-  const step = ppx >= 100 ? 1 : ppx >= 55 ? 2 : 3;
+  const step = ppx >= 100 ? 1 : ppx >= 55 ? 2 : ppx >= 30 ? 3 : 6;
   let ticks = "";
   for (let t = S.t0, i = 0; t <= S.t1; t += H, i++) {
     const hh = jd(t).getUTCHours(), x = i * ppx;
@@ -459,6 +487,31 @@ function render() {
   updateSel();
 }
 const collapsedKey = k => S.collapsed.has(k);
+
+/* ---- 累計配信時間: 11/20 0:00 〜 本番前日(11/27)の終わりまで。複数媒体の同時配信は重ねずに数える ---- */
+const CUM_FROM = jstMs(2026, 11, 20, 0), CUM_TO = jstMs(2026, 11, 28, 0);
+function cumMs(pid) {
+  const now = Date.now();
+  const iv = sessionsOf(pid).map(s => [Math.max(s.start, CUM_FROM), Math.min(s.end || now, CUM_TO)]).filter(x => x[1] > x[0]).sort((a, b) => a[0] - b[0]);
+  let tot = 0, cs = null, ce = null;
+  for (const [a, b] of iv) {
+    if (cs === null) { cs = a; ce = b; }
+    else if (a <= ce) ce = Math.max(ce, b);
+    else { tot += ce - cs; cs = a; ce = b; }
+  }
+  return cs === null ? tot : tot + ce - cs;
+}
+const fmtCum = ms => { const m = Math.floor(ms / 60000), h = Math.floor(m / 60); return h ? h + "h" + pad(m % 60) + "m" : m + "m"; };
+const cumBadge = pid => { const ms = cumMs(pid); return `<span class="cum${ms ? "" : " zero"}" title="累計配信時間(11/20〜11/27)">${fmtCum(ms)}</span>`; };
+function renderRanking() {
+  const rows = ROSTER.map(p => ({ p, ms: cumMs(p.id) })).sort((a, b) => b.ms - a.ms);
+  const max = Math.max(rows[0] ? rows[0].ms : 0, 1);
+  $("#rkTeams").innerHTML = TEAM_ORDER.filter(k => k !== "hyg").map(k => {
+    const m = rows.filter(r => teamOf(r.p) === k);
+    return `<div style="--tc:${TEAMS[k].color}"><b>${esc(TEAMS[k].name)}(${m.length}人)</b><span>${fmtCum(m.reduce((a, r) => a + r.ms, 0))}</span></div>`;
+  }).join("");
+  $("#rkList").innerHTML = rows.map((r, i) => `<span class="no">${i + 1}</span><span class="dot" style="--tc:${TEAMS[teamOf(r.p)].color}"></span><div class="bar2" style="--tc:${TEAMS[teamOf(r.p)].color}"><i style="width:${(r.ms / max * 100).toFixed(1)}%"></i><span>${esc(r.p.name)}</span></div><span class="t">${fmtCum(r.ms)}</span>`).join("");
+}
 function groupedByGame(list) {
   const groups = new Map();
   list.forEach(p => { const s = liveOf(p.id); const g = s ? (s.game || "カテゴリ未設定") : ""; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(p); });
@@ -468,7 +521,7 @@ function groupedByGame(list) {
 }
 
 function rowHtml(p, T, now, w) {
-  const live = liveOf(p.id), ppx = S.ppx;
+  const live = liveOf(p.id), ppx = S.eff;
   let bars = "";
   sessionsOf(p.id).forEach(s => {
     const a = Math.max(s.start, S.t0), b = Math.min(s.end || now, S.t1);
@@ -484,7 +537,7 @@ function rowHtml(p, T, now, w) {
       + `</a>`;
   });
   const sel = S.sel.has(p.id);
-  return `<div class="row${sel ? " sel" : ""}" style="--tc:${T.color}" data-pid="${p.id}"><div class="name"><label><input type="checkbox" data-pid="${p.id}" ${sel ? "checked" : ""} aria-label="${esc(p.name)}を同時視聴に追加"><span class="av">${esc(p.name.trim().charAt(0))}</span><span class="nm"><span>${esc(p.name)}</span><em class="${live ? "on" : ""}">${live ? "LIVE" + (live.game ? " ・ " + esc(live.game) : "") : esc(p.tag || (p.leader ? "リーダー" : "")) || "&nbsp;"}</em></span></label>${live ? `<button class="pipbtn" data-act="pip" data-pid="${p.id}" title="ピクチャーインピクチャーで見る">PiP</button>` : ""}</div><div class="track" style="width:${w}px">${bars}</div></div>`;
+  return `<div class="row${sel ? " sel" : ""}" style="--tc:${T.color}" data-pid="${p.id}"><div class="name"><label><input type="checkbox" data-pid="${p.id}" ${sel ? "checked" : ""} aria-label="${esc(p.name)}を同時視聴に追加"><span class="av">${esc(p.name.trim().charAt(0))}</span><span class="nm"><span>${esc(p.name)}</span><em class="${live ? "on" : ""}">${live ? "LIVE" + (live.game ? " ・ " + esc(live.game) : "") : esc(p.tag || (p.leader ? "リーダー" : "")) || "&nbsp;"}</em></span></label>${cumBadge(p.id)}${live ? `<button class="pipbtn" data-act="pip" data-pid="${p.id}" title="ピクチャーインピクチャーで見る">PiP</button>` : ""}</div><div class="track" style="width:${w}px">${bars}</div></div>`;
 }
 
 /* ============ 選択 ============ */
@@ -531,7 +584,7 @@ $("#tl").addEventListener("change", e => { const c = e.target.closest('input[typ
 /* ============ ツールバー ============ */
 $("#range").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
-  S.range = b.dataset.r;
+  S.range = b.dataset.r; $("#dayPick").value = "";
   document.querySelectorAll("#range button").forEach(x => x.setAttribute("aria-pressed", x === b));
   render(); scrollToDefault();
 });
@@ -541,6 +594,18 @@ $("#sortSeg").addEventListener("click", e => {
   document.querySelectorAll("#sortSeg button").forEach(x => x.setAttribute("aria-pressed", x === b));
   render();
 });
+(function dayPick() {
+  const sel = $("#dayPick");
+  sel.innerHTML = '<option value="">日付を選ぶ</option>' + Array.from({ length: 11 }, (_, i) => 20 + i).map(d => `<option value="${d}">11/${d}(${youbi[new Date(Date.UTC(2026, 10, d)).getUTCDay()]})${d === 28 ? " DAY1" : d === 29 ? " DAY2" : ""}</option>`).join("");
+  sel.addEventListener("change", () => {
+    if (!sel.value) return;
+    S.range = "day:" + sel.value;
+    document.querySelectorAll("#range button").forEach(x => x.setAttribute("aria-pressed", "false"));
+    render(); scrollToDefault();
+  });
+})();
+$("#openRank").addEventListener("click", () => { renderRanking(); $("#rkModal").hidden = false; });
+$("#rkClose").addEventListener("click", () => $("#rkModal").hidden = true);
 $("#zoom").addEventListener("change", e => { S.ppx = +e.target.value; render(); scrollToDefault(); });
 $("#liveOnly").addEventListener("click", e => { S.liveOnly = !S.liveOnly; e.currentTarget.setAttribute("aria-pressed", S.liveOnly); render(); });
 (function chips() {
@@ -553,8 +618,8 @@ $("#liveOnly").addEventListener("click", e => { S.liveOnly = !S.liveOnly; e.curr
 })();
 function scrollToDefault() {
   const tl = $("#tl"), now = Date.now(), nameW = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--name-w"));
-  if (S.range === "now") tl.scrollLeft = Math.max(0, nameW + (now - S.t0) / H * S.ppx - tl.clientWidth * 0.7);
-  else if (S.range === "d1" || S.range === "d2") tl.scrollLeft = (10 / 24) * (S.t1 - S.t0) / H * S.ppx; // 10時台から
+  if (S.range === "now") tl.scrollLeft = Math.max(0, nameW + (now - S.t0) / H * S.eff - tl.clientWidth * 0.7);
+  else if (S.range === "d1" || S.range === "d2" || S.range.startsWith("day:")) tl.scrollLeft = (10 / 24) * (S.t1 - S.t0) / H * S.eff; // 10時台から
   else tl.scrollLeft = 0;
 }
 
@@ -645,7 +710,7 @@ $("#mvClear").addEventListener("click", () => { S.sel.clear(); closeMulti(); });
 $("#openMulti").addEventListener("click", openMulti);
 $("#dockOpen").addEventListener("click", openMulti);
 $("#dockClear").addEventListener("click", () => { S.sel.clear(); render(); });
-document.addEventListener("keydown", e => { if (e.key === "Escape") { if (!$("#edModal").hidden) $("#edModal").hidden = true; else if (!$("#mv").hidden) closeMulti(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { if (!$("#rkModal").hidden) $("#rkModal").hidden = true; else if (!$("#edModal").hidden) $("#edModal").hidden = true; else if (!$("#mv").hidden) closeMulti(); } });
 
 /* ============ チーム編集 ============ */
 $("#editTeams").addEventListener("click", () => {

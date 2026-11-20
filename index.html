@@ -18,7 +18,7 @@
   --text: #e8ecf4;
   --muted: #8a93a8;
   --live: #ff4d2e;
-  --blue: #3b82f6; --red: #ef4444; --yellow: #eab308; --green: #22c55e; --none: #8b93a7;
+  --hyg: #c084fc; --blue: #3b82f6; --red: #ef4444; --yellow: #eab308; --green: #22c55e; --none: #8b93a7;
   --twitch: #9146ff; --youtube: #ff2a3d;
   --font-body: "Noto Sans JP", system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
   --font-num: "Barlow Condensed", "Noto Sans JP", system-ui, sans-serif;
@@ -80,7 +80,13 @@ select.zoom { background: var(--panel); border: 1px solid var(--line); border-ra
 .teamrow button { background: transparent; border: 1px solid color-mix(in srgb, var(--tc) 55%, var(--line)); border-radius: 6px; padding: 2px 8px; font-size: 12px; color: var(--text); }
 .teamrow button:hover { background: color-mix(in srgb, var(--tc) 25%, transparent); }
 
-.row { display: flex; height: var(--row-h); border-bottom: 1px solid var(--grid); }
+.grow { display: flex; height: 24px; background: #0d1220; border-bottom: 1px solid var(--grid); }
+.grow .lab { position: sticky; left: 0; z-index: 5; display: flex; align-items: center; gap: 8px; width: max-content; min-width: var(--name-w); padding: 0 12px 0 14px; font-size: 12px; color: #b9c3dc; background: #0d1220; border-left: 4px solid var(--tc); }
+.grow .lab span { color: var(--muted); font-family: var(--font-num); font-size: 13px; }
+.teamrow .moves { display: inline-flex; gap: 2px; }
+.teamrow .moves button { padding: 2px 6px; line-height: 1; }
+.teamrow .moves button:disabled { opacity: .3; cursor: default; }
+.row {  display: flex; height: var(--row-h); border-bottom: 1px solid var(--grid); }
 .row:hover .name { background: #151b2a; }
 .name { position: sticky; left: 0; z-index: 5; width: var(--name-w); flex: none; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; background: var(--bg); border-right: 1px solid var(--line); border-left: 4px solid var(--tc); }
 .name label { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; cursor: pointer; }
@@ -88,7 +94,7 @@ select.zoom { background: var(--panel); border: 1px solid var(--line); border-ra
 .av { width: 28px; height: 28px; flex: none; border-radius: 50%; background: color-mix(in srgb, var(--tc) 35%, #10141e); border: 2px solid var(--tc); display: grid; place-items: center; font-size: 12px; font-weight: 700; }
 .nm { min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
 .nm span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-.nm em { font-style: normal; font-size: 11px; color: var(--muted); }
+.nm em { font-style: normal; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 108px; display: block; }
 .nm em.on { color: var(--live); font-weight: 700; }
 .pipbtn { flex: none; background: transparent; border: 1px solid var(--line); border-radius: 5px; font-size: 11px; padding: 1px 5px; color: var(--muted); }
 .pipbtn:hover { color: var(--text); border-color: #4a5a85; }
@@ -193,6 +199,10 @@ select.zoom { background: var(--panel); border: 1px solid var(--line); border-ra
     <option value="180">拡大 180px/h</option>
     <option value="260">最大 260px/h</option>
   </select>
+  <div class="seg" id="sortSeg" role="group" aria-label="並び順">
+    <button data-s="default" aria-pressed="true">標準順</button>
+    <button data-s="game" aria-pressed="false">ゲーム別</button>
+  </div>
   <button class="chip" id="liveOnly" aria-pressed="false">配信中のみ</button>
   <span id="teamChips" style="display:contents"></span>
   <div class="tools-r">
@@ -252,9 +262,12 @@ const TEAMS = {
   red:    { name: "TEAM SHAKA",  color: "var(--red)" },
   yellow: { name: "TEAM もこう", color: "var(--yellow)" },
   green:  { name: "TEAM 関優太", color: "var(--green)" },
-  none:   { name: "チーム未確認", color: "var(--none)" }
+  none:   { name: "チーム未確認", color: "var(--none)" },
+  hyg:    { name: "Mr.HYG(主催)", color: "var(--hyg)" }
 };
 const ROSTER = [
+  { id: "kato", name: "加藤純一", team: "hyg", tag: "Mr.HYG" },
+
   { id: "k4sen", name: "k4sen", team: "blue", leader: true },
   { id: "ayutaro", name: "あゆたろう", team: "blue" },
   { id: "hiiragi", name: "柊ツルギ", team: "blue" },
@@ -304,13 +317,20 @@ const ROSTER = [
   { id: "ramu", name: "RaMu", team: "blue" },
   { id: "rion", name: "rion", team: "red" }
 ];
-const TEAM_ORDER = ["blue", "red", "yellow", "green"];
+const TEAM_ORDER = ["hyg", "blue", "red", "yellow", "green"];   // hyg は常に一番上
+const DEFAULT_ORDER = ["blue", "red", "yellow", "green"];            // 入れ替え可能なチーム
 
 /* ============ 状態 ============ */
 const JST = 9 * 3600e3, H = 3600e3;
 const S = { sessions: [], mode: "demo", range: "now", ppx: 110, liveOnly: false, teamFilter: new Set(TEAM_ORDER),
-  collapsed: new Set(), sel: new Set(), teamOverride: {}, t0: 0, t1: 0, mvAudio: null, mvLayout: "grid", pipActive: new Set() };
+  collapsed: new Set(), sel: new Set(), teamOverride: {}, t0: 0, t1: 0, mvAudio: null, mvLayout: "grid", pipActive: new Set(), order: DEFAULT_ORDER.slice(), sortMode: "default" };
 try { S.teamOverride = JSON.parse(localStorage.getItem("hyg.teams") || "{}"); } catch (e) {}
+try {
+  const o = JSON.parse(localStorage.getItem("hyg.order") || "null");
+  if (Array.isArray(o)) S.order = o.filter(k => DEFAULT_ORDER.includes(k)).concat(DEFAULT_ORDER.filter(k => !o.includes(k)));
+  const m = localStorage.getItem("hyg.sort"); if (m === "game") S.sortMode = "game";
+} catch (e) {}
+const saveLocal = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -415,16 +435,21 @@ function render() {
 
   const byTeam = {}; TEAM_ORDER.forEach(k => byTeam[k] = []);
   ROSTER.forEach(p => byTeam[teamOf(p)].push(p));
-  TEAM_ORDER.forEach(tk => {
+  ["hyg", ...S.order].forEach(tk => {
     if (!S.teamFilter.has(tk)) return;
     let list = byTeam[tk];
     if (!list.length) return;
     const liveN = list.filter(p => liveOf(p.id)).length;
     const T = TEAMS[tk], col = collapsedKey(tk);
-    html += `<div class="group"><div class="teamrow" style="--tc:${T.color}"><div class="lab"><strong>${esc(T.name)}</strong><span class="cnt"><b>${liveN}</b> / ${list.length} 配信中</span><button data-act="fold" data-team="${tk}">${col ? "開く" : "たたむ"}</button><button data-act="selLive" data-team="${tk}">配信中を選択</button></div></div>`;
+    html += `<div class="group"><div class="teamrow" style="--tc:${T.color}"><div class="lab"><strong>${esc(T.name)}</strong><span class="cnt"><b>${liveN}</b> / ${list.length} 配信中</span><button data-act="fold" data-team="${tk}">${col ? "開く" : "たたむ"}</button>${tk === "hyg" ? "" : `<span class="moves"><button data-act="up" data-team="${tk}" title="このチームを上へ" aria-label="${esc(T.name)}を上へ"${S.order.indexOf(tk) === 0 ? " disabled" : ""}>▲</button><button data-act="down" data-team="${tk}" title="このチームを下へ" aria-label="${esc(T.name)}を下へ"${S.order.indexOf(tk) === S.order.length - 1 ? " disabled" : ""}>▼</button></span>`}<button data-act="selLive" data-team="${tk}">配信中を選択</button></div></div>`;
     if (!col) {
       if (S.liveOnly) list = list.filter(p => liveOf(p.id));
-      list.forEach(p => { html += rowHtml(p, T, now, w); });
+      if (S.sortMode === "game") {
+        groupedByGame(list).forEach(g => {
+          html += `<div class="grow" style="--tc:${T.color}"><div class="lab">${g.game ? esc(g.game) : "配信していない人"}<span>${g.members.length}人</span></div></div>`;
+          g.members.forEach(p => { html += rowHtml(p, T, now, w); });
+        });
+      } else list.forEach(p => { html += rowHtml(p, T, now, w); });
     }
     html += `</div>`;
   });
@@ -434,6 +459,13 @@ function render() {
   updateSel();
 }
 const collapsedKey = k => S.collapsed.has(k);
+function groupedByGame(list) {
+  const groups = new Map();
+  list.forEach(p => { const s = liveOf(p.id); const g = s ? (s.game || "カテゴリ未設定") : ""; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(p); });
+  return [...groups.keys()]
+    .sort((a, b) => (a === "") - (b === "") || groups.get(b).length - groups.get(a).length || a.localeCompare(b, "ja"))
+    .map(k => ({ game: k, members: groups.get(k) }));
+}
 
 function rowHtml(p, T, now, w) {
   const live = liveOf(p.id), ppx = S.ppx;
@@ -452,7 +484,7 @@ function rowHtml(p, T, now, w) {
       + `</a>`;
   });
   const sel = S.sel.has(p.id);
-  return `<div class="row${sel ? " sel" : ""}" style="--tc:${T.color}" data-pid="${p.id}"><div class="name"><label><input type="checkbox" data-pid="${p.id}" ${sel ? "checked" : ""} aria-label="${esc(p.name)}を同時視聴に追加"><span class="av">${esc(p.name.trim().charAt(0))}</span><span class="nm"><span>${esc(p.name)}</span><em class="${live ? "on" : ""}">${live ? "LIVE" : p.leader ? "リーダー" : "&nbsp;"}</em></span></label>${live ? `<button class="pipbtn" data-act="pip" data-pid="${p.id}" title="ピクチャーインピクチャーで見る">PiP</button>` : ""}</div><div class="track" style="width:${w}px">${bars}</div></div>`;
+  return `<div class="row${sel ? " sel" : ""}" style="--tc:${T.color}" data-pid="${p.id}"><div class="name"><label><input type="checkbox" data-pid="${p.id}" ${sel ? "checked" : ""} aria-label="${esc(p.name)}を同時視聴に追加"><span class="av">${esc(p.name.trim().charAt(0))}</span><span class="nm"><span>${esc(p.name)}</span><em class="${live ? "on" : ""}">${live ? "LIVE" + (live.game ? " ・ " + esc(live.game) : "") : esc(p.tag || (p.leader ? "リーダー" : "")) || "&nbsp;"}</em></span></label>${live ? `<button class="pipbtn" data-act="pip" data-pid="${p.id}" title="ピクチャーインピクチャーで見る">PiP</button>` : ""}</div><div class="track" style="width:${w}px">${bars}</div></div>`;
 }
 
 /* ============ 選択 ============ */
@@ -488,6 +520,10 @@ $("#tl").addEventListener("click", e => {
   const act = b.dataset.act;
   if (act === "fold") { const k = b.dataset.team; S.collapsed.has(k) ? S.collapsed.delete(k) : S.collapsed.add(k); render(); }
   else if (act === "selLive") { ROSTER.filter(p => teamOf(p) === b.dataset.team && liveOf(p.id)).forEach(p => S.sel.add(p.id)); render(); }
+  else if (act === "up" || act === "down") {
+    const k = b.dataset.team, i = S.order.indexOf(k), j = act === "up" ? i - 1 : i + 1;
+    if (i >= 0 && j >= 0 && j < S.order.length) { [S.order[i], S.order[j]] = [S.order[j], S.order[i]]; saveLocal("hyg.order", JSON.stringify(S.order)); render(); }
+  }
   else if (act === "pip") { e.preventDefault(); openPip(b.dataset.pid); }
 });
 $("#tl").addEventListener("change", e => { const c = e.target.closest('input[type="checkbox"][data-pid]'); if (c) setSel(c.dataset.pid, c.checked); });
@@ -498,6 +534,12 @@ $("#range").addEventListener("click", e => {
   S.range = b.dataset.r;
   document.querySelectorAll("#range button").forEach(x => x.setAttribute("aria-pressed", x === b));
   render(); scrollToDefault();
+});
+$("#sortSeg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  S.sortMode = b.dataset.s; saveLocal("hyg.sort", S.sortMode);
+  document.querySelectorAll("#sortSeg button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  render();
 });
 $("#zoom").addEventListener("change", e => { S.ppx = +e.target.value; render(); scrollToDefault(); });
 $("#liveOnly").addEventListener("click", e => { S.liveOnly = !S.liveOnly; e.currentTarget.setAttribute("aria-pressed", S.liveOnly); render(); });
@@ -626,6 +668,7 @@ async function refresh() {
   if (!$("#mv").hidden) syncTiles();
 }
 (async function init() {
+  document.querySelectorAll("#sortSeg button").forEach(x => x.setAttribute("aria-pressed", x.dataset.s === S.sortMode));
   tickClock(); setInterval(tickClock, 1000);
   await load(); render(); scrollToDefault();
   setInterval(refresh, CONFIG.REFRESH_SEC * 1000);

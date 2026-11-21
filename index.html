@@ -7,23 +7,50 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<script>try { var _t = localStorage.getItem("hyg.theme") || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"); document.documentElement.setAttribute("data-theme", _t); } catch (e) {}</script>
 <style>
 /* Layout idea: 放送ブースのモニター卓。暗い卓面に、チーム色の帯が時間軸を流れる。 */
+/* テーマ: ダーク(初期)/ ライト / 高コントラスト。色はすべてここの変数から取る */
 :root {
-  --bg: #0a0d14;
-  --panel: #10141e;
-  --panel-2: #161b28;
-  --line: #232b3d;
-  --grid: #1a2133;
-  --text: #e8ecf4;
-  --muted: #8a93a8;
-  --live: #ff4d2e;
-  --hyg: #c084fc; --blue: #3b82f6; --red: #ef4444; --yellow: #eab308; --green: #22c55e; --none: #8b93a7;
+  --bg: #0a0d14; --panel: #10141e; --panel-2: #161b28; --line: #232b3d; --grid: #1a2133;
+  --text: #e8ecf4; --text-2: #b9c3dc; --muted: #8a93a8;
+  --live: #ff4d2e; --live-h: #ff6246;
+  --blue: #3b82f6; --red: #ef4444; --yellow: #eab308; --green: #22c55e; --none: #8b93a7; --hyg: #c084fc;
   --twitch: #9146ff; --youtube: #ff2a3d;
+  --hover: #151b2a; --sel: #172238; --btn: #25304a; --btn-bd: #3a4870; --btn-h: #2e3b5c;
+  --chip-bg: #1d2740; --chip-bd: #4a5a85; --accent: #6aa0ff; --accent-bg: #2d4a8a; --focus: #8ab4ff;
+  --tip-bg: #0d111a; --tip-bd: #36425f; --dock-bg: #1b2540; --dock-bd: #44578a; --mv-bg: #06080d; --lab-bg: #0d1220;
+  --bar-base: #141a28; --bar-fill: 20%; --bar-bd: 45%; --bar-hov: 34%; --bar-live: 30%; --thumb-bg: #0c1018;
+  --day-line: #55658f; --day-text: #aab8dd; --notice-bg: #2a2412; --notice-bd: #4a3f17; --notice-fg: #f5d78a;
+  --overlay: rgba(3,5,9,.7); --warn: #ffb347; --up: #4ade80; --down: #f87171;
   --font-body: "Noto Sans JP", system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif;
   --font-num: "Barlow Condensed", "Noto Sans JP", system-ui, sans-serif;
   --name-w: 250px;
   --row-h: 54px;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #f1f4f9; --panel: #ffffff; --panel-2: #eef1f7; --line: #d3dae8; --grid: #e2e7f0;
+  --text: #1a2130; --text-2: #3a4560; --muted: #5b6578;
+  --live: #e0381a; --live-h: #f24d30;
+  --hover: #e9eff9; --sel: #d9e5fb; --btn: #e3e9f6; --btn-bd: #b6c2dc; --btn-h: #d3dcf0;
+  --chip-bg: #dbe6fb; --chip-bd: #7f9bd6; --accent: #2f6fe4; --accent-bg: #2f6fe4; --focus: #1d55c4;
+  --tip-bg: #ffffff; --tip-bd: #c1cbe0; --dock-bg: #ffffff; --dock-bd: #7f9bd6; --mv-bg: #dde2ec; --lab-bg: #e7ebf4;
+  --bar-base: #ffffff; --bar-fill: 24%; --bar-bd: 55%; --bar-hov: 36%; --bar-live: 34%; --thumb-bg: #d9dfeb;
+  --day-line: #8da0c8; --day-text: #2f4b7c; --notice-bg: #fff4d4; --notice-bd: #e3cb86; --notice-fg: #6a4e00;
+  --overlay: rgba(20,28,45,.45); --warn: #b45f00; --up: #15803d; --down: #b91c1c;
+  color-scheme: light;
+}
+:root[data-theme="contrast"] {
+  --bg: #000000; --panel: #000000; --panel-2: #0b0b0b; --line: #7a7a7a; --grid: #2b2b2b;
+  --text: #ffffff; --text-2: #ffffff; --muted: #cfcfcf;
+  --live: #ff5a2e; --live-h: #ff7a55;
+  --hover: #1c1c1c; --sel: #0b2a66; --btn: #1a1a1a; --btn-bd: #ffffff; --btn-h: #333333;
+  --chip-bg: #0b3d91; --chip-bd: #ffffff; --accent: #4da3ff; --accent-bg: #0b3d91; --focus: #ffe14d;
+  --tip-bg: #000000; --tip-bd: #ffffff; --dock-bg: #000000; --dock-bd: #ffffff; --mv-bg: #000000; --lab-bg: #111111;
+  --bar-base: #0a0a0a; --bar-fill: 40%; --bar-bd: 90%; --bar-hov: 55%; --bar-live: 50%; --thumb-bg: #000000;
+  --day-line: #ffffff; --day-text: #ffe14d; --notice-bg: #000000; --notice-bd: #ffe14d; --notice-fg: #ffe14d;
+  --overlay: rgba(0,0,0,.88); --warn: #ffe14d; --up: #7dff9b; --down: #ff8a8a;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -31,7 +58,7 @@ html, body { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 14px; line-height: 1.45; display: flex; flex-direction: column; overflow: hidden; }
 button, select, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
-:focus-visible { outline: 2px solid #8ab4ff; outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 /* header */
 .top { padding: 10px 16px 8px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
@@ -40,8 +67,8 @@ button { cursor: pointer; }
 .brand small { color: var(--muted); font-size: 12px; }
 .clock { font-family: var(--font-num); font-size: 26px; font-weight: 600; letter-spacing: .04em; font-variant-numeric: tabular-nums; margin-left: auto; text-align: right; line-height: 1; }
 .clock small { display: block; font-family: var(--font-body); font-size: 11px; letter-spacing: 0; color: var(--muted); font-weight: 400; margin-top: 3px; }
-.clock small.stale { color: #ffb347; font-weight: 700; }
-.notice { width: 100%; font-size: 12px; color: #f5d78a; background: #2a2412; border: 1px solid #4a3f17; border-radius: 6px; padding: 6px 10px; }
+.clock small.stale { color: var(--warn); font-weight: 700; }
+.notice { width: 100%; font-size: 12px; color: var(--notice-fg); background: var(--notice-bg); border: 1px solid var(--notice-bd); border-radius: 6px; padding: 6px 10px; }
 .notice[hidden] { display: none; }
 
 /* toolbar */
@@ -49,14 +76,14 @@ button { cursor: pointer; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .seg button { background: var(--panel); border: 0; padding: 6px 12px; border-right: 1px solid var(--line); color: var(--muted); }
 .seg button:last-child { border-right: 0; }
-.seg button[aria-pressed="true"] { background: #25304a; color: var(--text); }
+.seg button[aria-pressed="true"] { background: var(--btn); color: var(--text); }
 .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
-.chip[aria-pressed="true"] { color: var(--text); border-color: #4a5a85; background: #1d2740; }
+.chip[aria-pressed="true"] { color: var(--text); border-color: var(--chip-bd); background: var(--chip-bg); }
 .chip i { width: 9px; height: 9px; border-radius: 50%; background: var(--c, var(--none)); display: inline-block; }
-.btn { background: #25304a; border: 1px solid #3a4870; border-radius: 8px; padding: 6px 14px; color: var(--text); }
-.btn:hover { background: #2e3b5c; }
+.btn { background: var(--btn); border: 1px solid var(--btn-bd); border-radius: 8px; padding: 6px 14px; color: var(--text); }
+.btn:hover { background: var(--btn-h); }
 .btn.primary { background: var(--live); border-color: var(--live); color: #fff; font-weight: 700; }
-.btn.primary:hover { background: #ff6246; }
+.btn.primary:hover { background: var(--live-h); }
 .btn.ghost { background: transparent; border-color: var(--line); color: var(--muted); }
 .tools-r { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 select.zoom { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
@@ -68,8 +95,8 @@ select.zoom { background: var(--panel); border: 1px solid var(--line); border-ra
 .corner { position: sticky; left: 0; z-index: 8; width: var(--name-w); flex: none; background: var(--panel); border-right: 1px solid var(--line); padding: 8px 12px; color: var(--muted); font-size: 12px; }
 .scale { position: relative; flex: none; height: 100%; }
 .tick { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--line); padding: 8px 0 0 5px; font-family: var(--font-num); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.tick.day { border-left-color: #55658f; color: var(--text); }
-.tick.day b { font-weight: 600; margin-right: 6px; color: #aab8dd; }
+.tick.day { border-left-color: var(--day-line); color: var(--text); }
+.tick.day b { font-weight: 600; margin-right: 6px; color: var(--day-text); }
 .nowtag { position: absolute; top: 0; transform: translateX(-50%); background: var(--live); color: #fff; font-family: var(--font-num); font-size: 12px; font-weight: 600; padding: 1px 6px; border-radius: 0 0 4px 4px; z-index: 2; }
 .nowline { position: absolute; top: 34px; bottom: 0; width: 2px; background: var(--live); opacity: .85; z-index: 4; pointer-events: none; box-shadow: 0 0 10px rgba(255,77,46,.6); }
 
@@ -81,34 +108,34 @@ select.zoom { background: var(--panel); border: 1px solid var(--line); border-ra
 .teamrow button { background: transparent; border: 1px solid color-mix(in srgb, var(--tc) 55%, var(--line)); border-radius: 6px; padding: 2px 8px; font-size: 12px; color: var(--text); }
 .teamrow button:hover { background: color-mix(in srgb, var(--tc) 25%, transparent); }
 
-.grow { display: flex; height: 24px; background: #0d1220; border-bottom: 1px solid var(--grid); }
-.grow .lab { position: sticky; left: 0; z-index: 5; display: flex; align-items: center; gap: 8px; width: max-content; min-width: var(--name-w); padding: 0 12px 0 14px; font-size: 12px; color: #b9c3dc; background: #0d1220; border-left: 4px solid var(--tc); }
+.grow { display: flex; height: 24px; background: var(--lab-bg); border-bottom: 1px solid var(--grid); }
+.grow .lab { position: sticky; left: 0; z-index: 5; display: flex; align-items: center; gap: 8px; width: max-content; min-width: var(--name-w); padding: 0 12px 0 14px; font-size: 12px; color: var(--text-2); background: var(--lab-bg); border-left: 4px solid var(--tc); }
 .grow .lab span { color: var(--muted); font-family: var(--font-num); font-size: 13px; }
 .teamrow .moves { display: inline-flex; gap: 2px; }
 .teamrow .moves button { padding: 2px 6px; line-height: 1; }
 .teamrow .moves button:disabled { opacity: .3; cursor: default; }
 .row {  display: flex; height: var(--row-h); border-bottom: 1px solid var(--grid); }
-.row:hover .name { background: #151b2a; }
+.row:hover .name { background: var(--hover); }
 .name { position: sticky; left: 0; z-index: 5; width: var(--name-w); flex: none; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; background: var(--bg); border-right: 1px solid var(--line); border-left: 4px solid var(--tc); }
 .name label { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; cursor: pointer; }
-.name input { width: 16px; height: 16px; accent-color: #6aa0ff; flex: none; }
-.av { width: 28px; height: 28px; flex: none; border-radius: 50%; background: color-mix(in srgb, var(--tc) 35%, #10141e); border: 2px solid var(--tc); display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+.name input { width: 16px; height: 16px; accent-color: var(--accent); flex: none; }
+.av { width: 28px; height: 28px; flex: none; border-radius: 50%; background: color-mix(in srgb, var(--tc) 35%, var(--panel)); border: 2px solid var(--tc); display: grid; place-items: center; font-size: 12px; font-weight: 700; }
 .nm { min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
 .nm span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .nm em { font-style: normal; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 108px; display: block; }
 .nm em.on { color: var(--live); font-weight: 700; }
-.cum { flex: none; font-family: var(--font-num); font-size: 14px; color: #b9c3dc; font-variant-numeric: tabular-nums; min-width: 54px; text-align: right; }
+.cum { flex: none; font-family: var(--font-num); font-size: 14px; color: var(--text-2); font-variant-numeric: tabular-nums; min-width: 54px; text-align: right; }
 .cum.zero { color: var(--muted); }
 .pipbtn { flex: none; background: transparent; border: 1px solid var(--line); border-radius: 5px; font-size: 11px; padding: 1px 5px; color: var(--muted); }
-.pipbtn:hover { color: var(--text); border-color: #4a5a85; }
+.pipbtn:hover { color: var(--text); border-color: var(--chip-bd); }
 .track { position: relative; flex: none; height: 100%; background-image: repeating-linear-gradient(to right, transparent 0, transparent calc(var(--ppx) - 1px), var(--grid) calc(var(--ppx) - 1px), var(--grid) var(--ppx)); }
 .track.day-split { }
-.row.sel .name { background: #172238; }
+.row.sel .name { background: var(--sel); }
 
-.bar { position: absolute; top: 6px; height: calc(var(--row-h) - 12px); display: flex; align-items: center; gap: 7px; padding: 0 8px 0 4px; overflow: hidden; text-decoration: none; color: var(--text); border-radius: 6px; background: color-mix(in srgb, var(--tc) 20%, #141a28); border: 1px solid color-mix(in srgb, var(--tc) 45%, #141a28); border-left: 4px solid var(--pc); min-width: 14px; }
-.bar:hover { background: color-mix(in srgb, var(--tc) 34%, #141a28); z-index: 3; }
-.bar.live { background: color-mix(in srgb, var(--tc) 30%, #141a28); border-color: var(--live); box-shadow: 0 0 0 1px rgba(255,77,46,.35), 0 0 14px rgba(255,77,46,.25); }
-.bar .th { height: 34px; width: 60px; border-radius: 3px; object-fit: cover; flex: none; background: #0c1018; }
+.bar { position: absolute; top: 6px; height: calc(var(--row-h) - 12px); display: flex; align-items: center; gap: 7px; padding: 0 8px 0 4px; overflow: hidden; text-decoration: none; color: var(--text); border-radius: 6px; background: color-mix(in srgb, var(--tc) var(--bar-fill), var(--bar-base)); border: 1px solid color-mix(in srgb, var(--tc) var(--bar-bd), var(--bar-base)); border-left: 4px solid var(--pc); min-width: 14px; }
+.bar:hover { background: color-mix(in srgb, var(--tc) var(--bar-hov), var(--bar-base)); z-index: 3; }
+.bar.live { background: color-mix(in srgb, var(--tc) var(--bar-live), var(--bar-base)); border-color: var(--live); box-shadow: 0 0 0 1px rgba(255,77,46,.35), 0 0 14px rgba(255,77,46,.25); }
+.bar .th { height: 34px; width: 60px; border-radius: 3px; object-fit: cover; flex: none; background: var(--thumb-bg); }
 .bar .tx { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
 .bar .tx b { font-weight: 500; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bar .tx i { font-style: normal; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -118,21 +145,21 @@ select.zoom { background: var(--panel); border: 1px solid var(--line); border-ra
 .group[hidden], .row[hidden] { display: none; }
 
 /* tooltip */
-.tip { position: fixed; z-index: 60; width: 300px; background: #0d111a; border: 1px solid #36425f; border-radius: 10px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.6); pointer-events: none; }
+.tip { position: fixed; z-index: 60; width: 300px; background: var(--tip-bg); border: 1px solid var(--tip-bd); border-radius: 10px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.6); pointer-events: none; }
 .tip[hidden] { display: none; }
-.tip img { display: block; width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #0c1018; }
+.tip img { display: block; width: 100%; aspect-ratio: 16/9; object-fit: cover; background: var(--thumb-bg); }
 .tip .tb { padding: 8px 10px 10px; }
 .tip .tb b { display: block; font-size: 13px; margin-bottom: 4px; }
 .tip .tb span { display: block; font-size: 12px; color: var(--muted); }
 
 /* dock */
-.dock { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 10px; background: #1b2540; border: 1px solid #44578a; border-radius: 12px; padding: 8px 10px 8px 16px; box-shadow: 0 10px 30px rgba(0,0,0,.5); max-width: calc(100% - 24px); }
+.dock { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 10px; background: var(--dock-bg); border: 1px solid var(--dock-bd); border-radius: 12px; padding: 8px 10px 8px 16px; box-shadow: 0 10px 30px rgba(0,0,0,.5); max-width: calc(100% - 24px); }
 .dock[hidden] { display: none; }
 .dock span { white-space: nowrap; }
 .dock b { font-family: var(--font-num); font-size: 18px; margin-right: 2px; }
 
 /* multi view */
-.mv { position: fixed; inset: 0; z-index: 40; background: #06080d; display: flex; flex-direction: column; }
+.mv { position: fixed; inset: 0; z-index: 40; background: var(--mv-bg); display: flex; flex-direction: column; }
 .mv[hidden] { display: none; }
 .mv-top { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
 .mv-top h2 { margin: 0; font-size: 15px; }
@@ -140,15 +167,30 @@ select.zoom { background: var(--panel); border: 1px solid var(--line); border-ra
 .mv-grid.main { grid-template-columns: 3fr 1fr; grid-auto-rows: 1fr; }
 .mv-grid.main .tile:first-child { grid-row: 1 / span 99; }
 .tile { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: #000; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; border-top: 3px solid var(--tc); }
-.tile.audio { border-color: #6aa0ff; border-top-color: var(--tc); }
+.tile.audio { border-color: var(--accent); border-top-color: var(--tc); }
 .tbar { display: flex; align-items: center; gap: 6px; padding: 3px 6px; background: var(--panel); font-size: 12px; }
 .tbar strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; font-weight: 500; }
 .tbar button, .tbar a { background: transparent; border: 1px solid var(--line); border-radius: 5px; padding: 1px 7px; color: var(--muted); font-size: 11px; text-decoration: none; white-space: nowrap; }
-.tbar button:hover, .tbar a:hover { color: var(--text); border-color: #4a5a85; }
-.tbar button[aria-pressed="true"] { color: #fff; background: #2d4a8a; border-color: #6aa0ff; }
+.tbar button:hover, .tbar a:hover { color: var(--text); border-color: var(--chip-bd); }
+.tbar button[aria-pressed="true"] { color: #fff; background: var(--accent-bg); border-color: var(--accent); }
 .tbody { flex: 1; min-height: 0; position: relative; background: #05070b; }
 .tbody iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-.ph { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 12px; font-size: 13px; }
+.ph { color: #9aa4bd !important; position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 12px; font-size: 13px; }
+.up { color: var(--up); } .down { color: var(--down); } .zero { color: var(--muted); }
+.sheet.wide { width: min(1040px, 100%); }
+.folwrap { overflow: auto; max-height: 46vh; border: 1px solid var(--line); border-radius: 8px; margin-top: 10px; }
+.fol { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.fol th, .fol td { padding: 5px 10px; border-bottom: 1px solid var(--grid); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; background: var(--panel); }
+.fol th { position: sticky; top: 0; z-index: 2; color: var(--muted); font-weight: 500; font-size: 12px; }
+.fol td:first-child, .fol th:first-child { position: sticky; left: 0; text-align: left; z-index: 1; border-right: 1px solid var(--line); }
+.fol th:first-child { z-index: 3; }
+.fol .nm2 { display: inline-flex; align-items: center; gap: 8px; }
+.fol .nm2 i { width: 9px; height: 9px; border-radius: 50%; background: var(--tc); display: inline-block; }
+.fol td.sum { font-weight: 700; }
+.folchart { margin: 6px 0 4px; }
+.folchart svg { width: 100%; height: auto; max-height: 230px; display: block; }
+.folchart .leg { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--text-2); margin-top: 4px; }
+.folchart .leg i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; background: var(--tc); margin-right: 6px; vertical-align: middle; }
 .rk { display: grid; grid-template-columns: 28px 12px minmax(0,1fr) 78px; gap: 4px 10px; align-items: center; font-size: 13px; }
 .rk .no { font-family: var(--font-num); color: var(--muted); text-align: right; }
 .rk .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--tc); }
@@ -176,9 +218,9 @@ select.zoom { background: var(--panel); border: 1px solid var(--line); border-ra
 }
 
 /* modal */
-.modal { position: fixed; inset: 0; z-index: 80; background: rgba(3,5,9,.7); display: grid; place-items: center; padding: 16px; }
+.modal { position: fixed; inset: 0; z-index: 80; background: var(--overlay); display: grid; place-items: center; padding: 16px; }
 .modal[hidden] { display: none; }
-.sheet { width: min(640px, 100%); max-height: 100%; display: flex; flex-direction: column; background: var(--panel); border: 1px solid #36425f; border-radius: 12px; overflow: hidden; }
+.sheet { width: min(640px, 100%); max-height: 100%; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--tip-bd); border-radius: 12px; overflow: hidden; }
 .sheet header { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
 .sheet header h3 { margin: 0; font-size: 15px; flex: 1; }
 .sheet .body { overflow: auto; padding: 8px 16px; }
@@ -222,6 +264,12 @@ select.zoom { background: var(--panel); border: 1px solid var(--line); border-ra
   <button class="chip" id="liveOnly" aria-pressed="false">配信中のみ</button>
   <span id="teamChips" style="display:contents"></span>
   <div class="tools-r">
+    <div class="seg" id="themeSeg" role="group" aria-label="表示テーマ">
+      <button data-th="dark" aria-pressed="false">ダーク</button>
+      <button data-th="light" aria-pressed="false">ライト</button>
+      <button data-th="contrast" aria-pressed="false">高コントラスト</button>
+    </div>
+    <button class="btn ghost" id="openFol">登録者の増減</button>
     <button class="btn ghost" id="openRank">累計配信時間</button>
     <button class="btn ghost" id="editTeams">チーム編集</button>
     <button class="btn primary" id="openMulti">同時視聴 <span id="selN">0</span></button>
@@ -251,6 +299,18 @@ select.zoom { background: var(--panel); border: 1px solid var(--line); border-ra
   </div>
   <div class="mv-grid" id="mvGrid"></div>
 </section>
+
+<div class="modal" id="folModal" hidden>
+  <div class="sheet wide" role="dialog" aria-modal="true" aria-labelledby="folTitle">
+    <header><h3 id="folTitle">登録者の増減</h3><button class="btn ghost" id="folClose">閉じる</button></header>
+    <div class="body">
+      <p class="note" id="folNote"></p>
+      <div class="rkteams" id="folTeams"></div>
+      <div class="folchart" id="folChart"></div>
+      <div class="folwrap"><table class="fol" id="folTable"></table></div>
+    </div>
+  </div>
+</div>
 
 <div class="modal" id="rkModal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rkTitle">
@@ -351,7 +411,7 @@ const DEFAULT_ORDER = ["blue", "red", "yellow", "green"];            // 入れ�
 /* ============ 状態 ============ */
 const JST = 9 * 3600e3, H = 3600e3;
 const S = { sessions: [], mode: "demo", range: "now", ppx: 110, liveOnly: false, teamFilter: new Set(TEAM_ORDER),
-  collapsed: new Set(), sel: new Set(), teamOverride: {}, t0: 0, t1: 0, mvAudio: null, mvLayout: "grid", pipActive: new Set(), order: DEFAULT_ORDER.slice(), sortMode: "default" };
+  collapsed: new Set(), sel: new Set(), teamOverride: {}, t0: 0, t1: 0, mvAudio: null, mvLayout: "grid", pipActive: new Set(), order: DEFAULT_ORDER.slice(), sortMode: "default", followers: {} };
 try { S.teamOverride = JSON.parse(localStorage.getItem("hyg.teams") || "{}"); } catch (e) {}
 try {
   const o = JSON.parse(localStorage.getItem("hyg.order") || "null");
@@ -419,12 +479,15 @@ async function load() {
       if (!r.ok) throw new Error(r.status);
       const j = await r.json();
       S.sessions = (j.sessions || []).map(s => ({ ...s, start: Date.parse(s.start), end: s.end ? Date.parse(s.end) : null }));
+      S.followers = j.followers || {};
       S.mode = "live"; S.updated = j.generatedAt ? Date.parse(j.generatedAt) : now; ok = true;
     } catch (e) { /* デモにフォールバック */ }
   }
   if (!ok) {
     if (!demoCache) demoCache = demoSessions(now);
     S.sessions = demoCache; S.mode = "demo"; S.updated = now;
+    if (!S.demoFol) S.demoFol = demoFollowers();
+    S.followers = S.demoFol;
   }
   const n = $("#notice");
   if (S.mode === "demo") { n.hidden = false; n.textContent = "デモデータを表示中です。配信タイトル・サムネイル・リンクは見本です。実データは status.json(同梱のポーラーが生成)を同じ場所に置くと自動で切り替わります。"; }
@@ -490,6 +553,74 @@ function render() {
   updateSel();
 }
 const collapsedKey = k => S.collapsed.has(k);
+
+/* ---- 登録者の増減: Twitchのフォロワー + YouTubeのチャンネル登録者。最初の記録を「開始」とし、日ごとと累計を出す ---- */
+const dayKey = ms => new Date(ms + JST).toISOString().slice(0, 10);
+const dayLabel = k => { const [y, m, d] = k.split("-").map(Number); return m + "/" + d + "(" + youbi[new Date(Date.UTC(y, m - 1, d)).getUTCDay()] + ")"; };
+const folTot = v => (!v || (v.tw == null && v.yt == null)) ? null : (v.tw || 0) + (v.yt || 0);
+const fmtN = n => n.toLocaleString("ja-JP");
+const fmtD = n => n > 0 ? "+" + fmtN(n) : n < 0 ? "−" + fmtN(-n) : "±0";
+const cls = n => n > 0 ? "up" : n < 0 ? "down" : "zero";
+function folDays() {
+  const starts = Object.values(S.followers || {}).map(f => f.base && f.base.t ? Date.parse(f.base.t) : null).filter(Boolean);
+  if (!starts.length) return [];
+  const out = [], today = dayKey(Date.now());
+  for (let t = Math.min(...starts); ; t += 24 * H) { const k = dayKey(t); out.push(k); if (k >= today) break; if (out.length > 40) break; }
+  return out;
+}
+function folSeries(pid, days) {
+  const F = (S.followers || {})[pid], base = F && F.base ? folTot(F.base) : null;
+  if (base === null) return null;
+  let carry = base; const list = [];
+  for (const d of days) {
+    const t = folTot(F.days && F.days[d]);
+    if (t === null) { list.push({ day: d, has: false, total: carry, delta: null }); continue; }
+    list.push({ day: d, has: true, total: t, delta: t - carry }); carry = t;
+  }
+  const latest = folTot(F.latest); const now = latest === null ? carry : latest;
+  return { base, now, cum: now - base, list };
+}
+function renderFollowers() {
+  const days = folDays();
+  $("#folNote").textContent = days.length
+    ? `記録を始めた ${dayLabel(days[0])} の最初の値を「開始」として、そこからの増減を出しています(開始前の増減は取得できません)。登録者は、Twitchのフォロワーと、YouTubeのチャンネル登録者(概数)の合計です。日ごとの増減は、その日の最後の記録と、前日の最後の記録の差です。`
+    : "まだ登録者数の記録がありません。ポーラーを動かすと、1時間ごとに記録されます。";
+  if (!days.length) { $("#folTeams").innerHTML = ""; $("#folChart").innerHTML = ""; $("#folTable").innerHTML = ""; return; }
+  const rows = ROSTER.map(p => ({ p, s: folSeries(p.id, days) })).filter(r => r.s).sort((a, b) => b.s.cum - a.s.cum);
+  // チーム集計
+  const keys = TEAM_ORDER.filter(k => rows.some(r => teamOf(r.p) === k));
+  const teamAgg = keys.map(k => {
+    const m = rows.filter(r => teamOf(r.p) === k);
+    const cumByDay = days.map((d, i) => m.reduce((a, r) => a + (r.s.list[i].total - r.s.base), 0));
+    const last = days.length - 1, todayDelta = m.reduce((a, r) => a + (r.s.list[last].delta || 0), 0);
+    return { k, n: m.length, cum: m.reduce((a, r) => a + r.s.cum, 0), todayDelta, cumByDay };
+  });
+  $("#folTeams").innerHTML = teamAgg.map(t => `<div style="--tc:${TEAMS[t.k].color}"><b>${esc(TEAMS[t.k].name)}(${t.n}人)</b><span class="${cls(t.cum)}">${fmtD(t.cum)}</span><b>今日 <span class="${cls(t.todayDelta)}" style="font-size:14px">${fmtD(t.todayDelta)}</span></b></div>`).join("");
+  // 折れ線グラフ(チームごとの累計)
+  if (days.length >= 2) {
+    const W = 760, Ht = 210, L = 58, R = 14, T = 12, B = 30, all = teamAgg.flatMap(t => t.cumByDay).concat([0]);
+    let lo = Math.min(...all), hi = Math.max(...all); if (hi === lo) hi = lo + 1;
+    const x = i => L + (W - L - R) * i / (days.length - 1), y = v => T + (Ht - T - B) * (1 - (v - lo) / (hi - lo));
+    const gl = [lo, (lo + hi) / 2, hi].map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmtD(Math.round(v))}</text>`).join("");
+    const step = days.length > 8 ? Math.ceil(days.length / 8) : 1;
+    const xl = days.map((d, i) => i % step === 0 || i === days.length - 1 ? `<text x="${x(i)}" y="${Ht - 8}" text-anchor="middle" font-size="11" fill="var(--muted)">${dayLabel(d).replace(/\(.\)/, "")}</text>` : "").join("");
+    const ls = teamAgg.map(t => `<polyline fill="none" stroke="${TEAMS[t.k].color}" stroke-width="2.5" points="${t.cumByDay.map((v, i) => x(i) + "," + y(v)).join(" ")}"/>` + t.cumByDay.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="${TEAMS[t.k].color}"/>`).join("")).join("");
+    $("#folChart").innerHTML = `<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="チームごとの登録者の累計増減">${gl}${xl}${ls}</svg><div class="leg">${teamAgg.map(t => `<span style="--tc:${TEAMS[t.k].color}"><i></i>${esc(TEAMS[t.k].name)}</span>`).join("")}</div>`;
+  } else $("#folChart").innerHTML = `<p class="note">グラフは、2日分以上の記録が貯まると表示されます。</p>`;
+  // 一覧
+  $("#folTable").innerHTML = `<thead><tr><th>名前</th><th>現在</th><th>開始</th><th>累計増減</th>${days.map(d => `<th>${dayLabel(d)}</th>`).join("")}</tr></thead><tbody>`
+    + rows.map(r => `<tr><td><span class="nm2" style="--tc:${TEAMS[teamOf(r.p)].color}"><i></i>${esc(r.p.name)}</span></td><td>${fmtN(r.s.now)}</td><td>${fmtN(r.s.base)}</td><td class="sum ${cls(r.s.cum)}">${fmtD(r.s.cum)}</td>${r.s.list.map(c => c.has ? `<td class="${cls(c.delta)}">${fmtD(c.delta)}</td>` : `<td class="zero">—</td>`).join("")}</tr>`).join("") + "</tbody>";
+}
+function demoFollowers() {
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const out = {}, today = Date.now(), ds = Array.from({ length: 5 }, (_, i) => dayKey(today - (4 - i) * 24 * H));
+  ROSTER.forEach(p => {
+    let n = Math.round(8000 + rnd() * 900000); const days = {}; const base = { tw: n, yt: null, t: new Date(today - 4 * 24 * H).toISOString() };
+    ds.forEach((d, i) => { if (i > 0) n += Math.round((rnd() * 1.4 - 0.15) * n * 0.01); days[d] = { tw: n, yt: null, t: new Date(today - (4 - i) * 24 * H).toISOString() }; });
+    out[p.id] = { base, days, latest: days[ds[ds.length - 1]] };
+  });
+  return out;
+}
 
 /* ---- 累計配信時間: 11/20 0:00 〜 本番前日(11/27)の終わりまで。複数媒体の同時配信は重ねずに数える ---- */
 const CUM_FROM = jstMs(2026, 11, 20, 0), CUM_TO = jstMs(2026, 11, 28, 0);
@@ -607,6 +738,8 @@ $("#sortSeg").addEventListener("click", e => {
     render(); scrollToDefault();
   });
 })();
+$("#openFol").addEventListener("click", () => { renderFollowers(); $("#folModal").hidden = false; });
+$("#folClose").addEventListener("click", () => $("#folModal").hidden = true);
 $("#openRank").addEventListener("click", () => { renderRanking(); $("#rkModal").hidden = false; });
 $("#rkClose").addEventListener("click", () => $("#rkModal").hidden = true);
 $("#zoom").addEventListener("change", e => { S.ppx = +e.target.value; render(); scrollToDefault(); });
@@ -659,7 +792,7 @@ async function openPip(pid) {
 let toastT;
 function toast(msg) {
   let t = $("#toast");
-  if (!t) { t = document.createElement("div"); t.id = "toast"; t.style.cssText = "position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:90;background:#222b42;border:1px solid #44578a;border-radius:8px;padding:8px 14px;font-size:13px;max-width:90%"; document.body.appendChild(t); }
+  if (!t) { t = document.createElement("div"); t.id = "toast"; t.style.cssText = "position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:90;background:var(--dock-bg);border:1px solid var(--dock-bd);border-radius:8px;padding:8px 14px;font-size:13px;max-width:90%"; document.body.appendChild(t); }
   t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3500);
 }
 
@@ -713,7 +846,7 @@ $("#mvClear").addEventListener("click", () => { S.sel.clear(); closeMulti(); });
 $("#openMulti").addEventListener("click", openMulti);
 $("#dockOpen").addEventListener("click", openMulti);
 $("#dockClear").addEventListener("click", () => { S.sel.clear(); render(); });
-document.addEventListener("keydown", e => { if (e.key === "Escape") { if (!$("#rkModal").hidden) $("#rkModal").hidden = true; else if (!$("#edModal").hidden) $("#edModal").hidden = true; else if (!$("#mv").hidden) closeMulti(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { const openM = [...document.querySelectorAll(".modal")].find(x => !x.hidden); if (openM) openM.hidden = true; else if (!$("#mv").hidden) closeMulti(); } });
 
 /* ============ チーム編集 ============ */
 $("#editTeams").addEventListener("click", () => {
@@ -735,7 +868,13 @@ async function refresh() {
   await load(); render();
   if (!$("#mv").hidden) syncTiles();
 }
+function applyTheme(t) {
+  document.documentElement.setAttribute("data-theme", t); saveLocal("hyg.theme", t);
+  document.querySelectorAll("#themeSeg button").forEach(x => x.setAttribute("aria-pressed", x.dataset.th === t));
+}
+$("#themeSeg").addEventListener("click", e => { const b = e.target.closest("button"); if (b) applyTheme(b.dataset.th); });
 (async function init() {
+  applyTheme(document.documentElement.getAttribute("data-theme") || "dark");
   document.querySelectorAll("#sortSeg button").forEach(x => x.setAttribute("aria-pressed", x.dataset.s === S.sortMode));
   tickClock(); setInterval(tickClock, 1000);
   await load(); render(); scrollToDefault();

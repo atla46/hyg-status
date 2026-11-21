@@ -13,6 +13,9 @@ const HISTORY = process.env.HISTORY || "./history.json";
 const OUT_DIR = dirname(OUT);
 const KEEP_FROM = Date.parse(process.env.KEEP_FROM || "2026-11-19T15:00:00Z"); // 2026-11-20 00:00 JST
 const THUMB_REFRESH_MS = 10 * 60e3;
+// 登録者数(Twitchのフォロワー+YouTubeのチャンネル登録者)を記録する間隔。既定は60分
+const FOLLOWER_EVERY_MS = (process.env.FOLLOWER_EVERY_MIN === undefined ? 60 : Number(process.env.FOLLOWER_EVERY_MIN)) * 60e3;
+const jstDay = ms => new Date(ms + 9 * 3600e3).toISOString().slice(0, 10);
 const { TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET, YOUTUBE_API_KEY } = process.env;
 
 const readJson = async (p, d) => { try { return JSON.parse(await readFile(p, "utf8")); } catch { return d; } };
@@ -44,11 +47,12 @@ async function twitchToken() {
   const j = await r.json(); twToken = j.access_token; twExp = Date.now() + (j.expires_in - 300) * 1000;
   return twToken;
 }
-const twGet = async path => {
+const twRaw = async path => {
   const r = await fetch("https://api.twitch.tv/helix/" + path, { headers: { "client-id": TWITCH_CLIENT_ID, authorization: "Bearer " + await twitchToken() } });
   if (!r.ok) throw new Error("Twitch " + path.split("?")[0] + " " + r.status);
-  return (await r.json()).data;
+  return r.json();
 };
+const twGet = async path => (await twRaw(path)).data;
 async function pollTwitch(channels) {
   const byLogin = loginMap(channels), found = [];
   for (const logins of chunk([...byLogin.keys()], 100)) {
@@ -118,6 +122,48 @@ async function pollYouTube(channels) {
   return found;
 }
 
+/* ---------- 登録者数(1日の終わりの値と、記録を始めた時点の値を残す) ---------- */
+async function twitchFollowers(channels, hist) {
+  const byLogin = loginMap(channels), out = {};
+  hist.ids = hist.ids || {};
+  for (const logins of chunk([...byLogin.keys()].filter(l => !hist.ids[l]), 100)) {
+    const q = new URLSearchParams(); logins.forEach(l => q.append("login", l));
+    for (const u of await twGet("users?" + q)) hist.ids[u.login.toLowerCase()] = u.id;
+  }
+  for (const part of chunk([...byLogin], 10)) {
+    await Promise.all(part.map(async ([login, pid]) => {
+      const id = hist.ids[login]; if (!id) return;
+      try { const j = await twRaw("channels/followers?broadcaster_id=" + id + "&first=1"); if (typeof j.total === "number") out[pid] = j.total; } catch { /* 1人の失敗は無視 */ }
+    }));
+  }
+  return out;
+}
+async function youtubeSubs(channels) {
+  const byId = new Map(Object.entries(channels).filter(([, c]) => c.youtube).map(([pid, c]) => [c.youtube, pid])), out = {};
+  for (const ids of chunk([...byId.keys()], 50)) {
+    const r = await fetch("https://www.googleapis.com/youtube/v3/channels?" + new URLSearchParams({ part: "statistics", id: ids.join(","), key: YOUTUBE_API_KEY }));
+    if (!r.ok) throw new Error("YouTube channels " + r.status);
+    for (const it of (await r.json()).items || []) { const st = it.statistics || {}; if (!st.hiddenSubscriberCount && st.subscriberCount !== undefined) out[byId.get(it.id)] = Number(st.subscriberCount); }
+  }
+  return out;
+}
+async function snapshotFollowers(channels, hist, ok) {
+  const now = Date.now();
+  if (hist.followerAt && now - Date.parse(hist.followerAt) < FOLLOWER_EVERY_MS - 60e3) return;
+  const tw = ok.twitch ? await twitchFollowers(channels, hist) : {};
+  const yt = ok.youtube ? await youtubeSubs(channels).catch(e => { console.error("!! YouTube登録者数: " + e.message); return {}; }) : {};
+  const F = hist.followers = hist.followers || {}, day = jstDay(now), t = new Date(now).toISOString();
+  for (const pid of new Set([...Object.keys(tw), ...Object.keys(yt)])) {
+    const f = F[pid] = F[pid] || { base: null, days: {}, latest: null }, prev = f.latest || {};
+    const v = { tw: tw[pid] ?? prev.tw ?? null, yt: yt[pid] ?? prev.yt ?? null, t };
+    if (!f.base) f.base = { ...v };
+    else { if (f.base.tw == null && v.tw != null) f.base.tw = v.tw; if (f.base.yt == null && v.yt != null) f.base.yt = v.yt; }
+    f.days[day] = v; f.latest = v;
+  }
+  hist.followerAt = t;
+  console.log("登録者数を記録: Twitch " + Object.keys(tw).length + "人 / YouTube " + Object.keys(yt).length + "人");
+}
+
 /* ---------- 1回分の更新 ---------- */
 async function tick() {
   const channels = await readJson("./channels.json", null);
@@ -131,6 +177,8 @@ async function tick() {
   const ok = {}, live = [];
   if (TWITCH_CLIENT_ID && TWITCH_CLIENT_SECRET) { try { const r = await pollTwitch(channels); live.push(...r); ok.twitch = true; console.log("Twitch OK: 配信中 " + r.length + "人 [" + r.map(x => x.pid).join(", ") + "]"); } catch (e) { console.error("!! Twitch エラー: " + e.message); } }
   if (YOUTUBE_API_KEY) { try { const r = await pollYouTube(channels); live.push(...r); ok.youtube = true; console.log("YouTube OK: 配信中 " + r.length + "人 [" + r.map(x => x.pid).join(", ") + "]"); } catch (e) { console.error("!! YouTube エラー: " + e.message); } }
+
+  try { await snapshotFollowers(channels, hist, ok); } catch (e) { console.error("!! 登録者数の取得に失敗: " + e.message); }
 
   const liveKeys = new Set(live.map(l => l.key));
   if (ok.twitch && (!hist.backfilledAt || process.env.BACKFILL === "1")) {
@@ -158,7 +206,7 @@ async function tick() {
   hist.sessions = hist.sessions.filter(s => Date.parse(s.end || now) >= KEEP_FROM);
   await writeFile(HISTORY, JSON.stringify(hist));
   const sessions = hist.sessions.map(({ misses, lastSeen, thumbAt, thumbLocal, ...s }) => s);
-  await writeFile(OUT, JSON.stringify({ generatedAt: now, sessions }));
+  await writeFile(OUT, JSON.stringify({ generatedAt: now, sessions, followers: hist.followers || {} }));
   console.log(now, "live:", live.length, "sessions:", sessions.length);
 }
 

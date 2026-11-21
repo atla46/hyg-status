@@ -40,6 +40,7 @@ button { cursor: pointer; }
 .brand small { color: var(--muted); font-size: 12px; }
 .clock { font-family: var(--font-num); font-size: 26px; font-weight: 600; letter-spacing: .04em; font-variant-numeric: tabular-nums; margin-left: auto; text-align: right; line-height: 1; }
 .clock small { display: block; font-family: var(--font-body); font-size: 11px; letter-spacing: 0; color: var(--muted); font-weight: 400; margin-top: 3px; }
+.clock small.stale { color: #ffb347; font-weight: 700; }
 .notice { width: 100%; font-size: 12px; color: #f5d78a; background: #2a2412; border: 1px solid #4a3f17; border-radius: 6px; padding: 6px 10px; }
 .notice[hidden] { display: none; }
 
@@ -428,7 +429,9 @@ async function load() {
   const n = $("#notice");
   if (S.mode === "demo") { n.hidden = false; n.textContent = "デモデータを表示中です。配信タイトル・サムネイル・リンクは見本です。実データは status.json(同梱のポーラーが生成)を同じ場所に置くと自動で切り替わります。"; }
   else n.hidden = true;
-  $("#updated").textContent = (S.mode === "demo" ? "デモ表示" : "最終更新 " + hm(S.updated));
+  const u = $("#updated"), ago = Math.round((Date.now() - S.updated) / 60000);
+  if (S.mode === "demo") { u.textContent = "デモ表示"; u.classList.remove("stale"); }
+  else { u.textContent = "最終更新 " + hm(S.updated) + (ago >= 10 ? "(" + ago + "分前)" : ""); u.classList.toggle("stale", ago >= 10); }
 }
 
 /* ============ 描画 ============ */

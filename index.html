@@ -105,6 +105,9 @@ select.zoom { background: var(--panel); border: 1px solid var(--line); border-ra
 .teamrow strong { font-size: 14px; }
 .teamrow .cnt { font-family: var(--font-num); font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .teamrow .cnt b { color: var(--live); font-weight: 600; }
+.teamrow .tcum { font-family: var(--font-num); font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.teamrow .tcum b { color: var(--text); font-weight: 600; }
+.teamrow .tcum small { margin-left: 6px; font-size: 12px; }
 .teamrow button { background: transparent; border: 1px solid color-mix(in srgb, var(--tc) 55%, var(--line)); border-radius: 6px; padding: 2px 8px; font-size: 12px; color: var(--text); }
 .teamrow button:hover { background: color-mix(in srgb, var(--tc) 25%, transparent); }
 
@@ -533,9 +536,9 @@ function render() {
     if (!S.teamFilter.has(tk)) return;
     let list = byTeam[tk];
     if (!list.length) return;
-    const liveN = list.filter(p => liveOf(p.id)).length;
+    const liveN = list.filter(p => liveOf(p.id)).length, tc = teamCum(list);
     const T = TEAMS[tk], col = collapsedKey(tk);
-    html += `<div class="group"><div class="teamrow" style="--tc:${T.color}"><div class="lab"><strong>${esc(T.name)}</strong><span class="cnt"><b>${liveN}</b> / ${list.length} 配信中</span><button data-act="fold" data-team="${tk}">${col ? "開く" : "たたむ"}</button>${tk === "hyg" ? "" : `<span class="moves"><button data-act="up" data-team="${tk}" title="このチームを上へ" aria-label="${esc(T.name)}を上へ"${S.order.indexOf(tk) === 0 ? " disabled" : ""}>▲</button><button data-act="down" data-team="${tk}" title="このチームを下へ" aria-label="${esc(T.name)}を下へ"${S.order.indexOf(tk) === S.order.length - 1 ? " disabled" : ""}>▼</button></span>`}<button data-act="selLive" data-team="${tk}">配信中を選択</button></div></div>`;
+    html += `<div class="group"><div class="teamrow" style="--tc:${T.color}"><div class="lab"><strong>${esc(T.name)}</strong><span class="cnt"><b>${liveN}</b> / ${list.length} 配信中</span><span class="tcum" title="11/20〜11/27の累計配信時間(メンバー合計 / 1人あたり平均)">累計 <b>${fmtCum(tc.tot)}</b><small>平均 ${fmtCum(tc.avg)}</small></span><button data-act="fold" data-team="${tk}">${col ? "開く" : "たたむ"}</button>${tk === "hyg" ? "" : `<span class="moves"><button data-act="up" data-team="${tk}" title="このチームを上へ" aria-label="${esc(T.name)}を上へ"${S.order.indexOf(tk) === 0 ? " disabled" : ""}>▲</button><button data-act="down" data-team="${tk}" title="このチームを下へ" aria-label="${esc(T.name)}を下へ"${S.order.indexOf(tk) === S.order.length - 1 ? " disabled" : ""}>▼</button></span>`}<button data-act="selLive" data-team="${tk}">配信中を選択</button></div></div>`;
     if (!col) {
       if (S.liveOnly) list = list.filter(p => liveOf(p.id));
       if (S.sortMode === "game") {
@@ -637,13 +640,14 @@ function cumMs(pid) {
 }
 const fmtCum = ms => { const m = Math.floor(ms / 60000), h = Math.floor(m / 60); return h ? h + "h" + pad(m % 60) + "m" : m + "m"; };
 const cumBadge = pid => { const ms = cumMs(pid); return `<span class="cum${ms ? "" : " zero"}" title="累計配信時間(11/20〜11/27)">${fmtCum(ms)}</span>`; };
+const teamCum = list => { const ms = list.map(p => cumMs(p.id)), tot = ms.reduce((a, b) => a + b, 0); return { tot, avg: list.length ? tot / list.length : 0 }; };
 function renderRanking() {
   const rows = ROSTER.map(p => ({ p, ms: cumMs(p.id) })).sort((a, b) => b.ms - a.ms);
   const max = Math.max(rows[0] ? rows[0].ms : 0, 1);
   $("#rkTeams").innerHTML = TEAM_ORDER.filter(k => k !== "hyg").map(k => {
-    const m = rows.filter(r => teamOf(r.p) === k);
-    return `<div style="--tc:${TEAMS[k].color}"><b>${esc(TEAMS[k].name)}(${m.length}人)</b><span>${fmtCum(m.reduce((a, r) => a + r.ms, 0))}</span></div>`;
-  }).join("");
+    const m = rows.filter(r => teamOf(r.p) === k), tot = m.reduce((a, r) => a + r.ms, 0);
+    return { k, n: m.length, tot, avg: m.length ? tot / m.length : 0 };
+  }).sort((a, b) => b.tot - a.tot).map((t, i) => `<div style="--tc:${TEAMS[t.k].color}"><b>${i + 1}位 ${esc(TEAMS[t.k].name)}(${t.n}人)</b><span>${fmtCum(t.tot)}</span><b>平均 ${fmtCum(t.avg)} / 人</b></div>`).join("");
   $("#rkList").innerHTML = rows.map((r, i) => `<span class="no">${i + 1}</span><span class="dot" style="--tc:${TEAMS[teamOf(r.p)].color}"></span><div class="bar2" style="--tc:${TEAMS[teamOf(r.p)].color}"><i style="width:${(r.ms / max * 100).toFixed(1)}%"></i><span>${esc(r.p.name)}</span></div><span class="t">${fmtCum(r.ms)}</span>`).join("");
 }
 function groupedByGame(list) {
